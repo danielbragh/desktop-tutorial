@@ -1,0 +1,63 @@
+<%- include('../partials/topo', { titulo: 'Faltas e Atestados', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Faltas e Atestados</h1>
+    <p class="subtitulo">Lançamentos de frequência de todos os funcionários.</p>
+  </div>
+  <a href="/ocorrencias/nova" class="btn">+ Novo lançamento</a>
+</div>
+
+<form class="filtros" method="get" action="/ocorrencias">
+  <div class="campo">
+    <label for="funcionario_id">Funcionário</label>
+    <select id="funcionario_id" name="funcionario_id">
+      <option value="">Todos</option>
+      <% funcionarios.forEach(function(f) { %>
+        <option value="<%= f.id %>" <%= String(filtros.funcionario_id) === String(f.id) ? 'selected' : '' %>><%= f.nome %> (<%= f.matricula %>)</option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="campo">
+    <label for="tipo">Tipo</label>
+    <select id="tipo" name="tipo">
+      <option value="">Todos</option>
+      <option value="falta_justificada" <%= filtros.tipo === 'falta_justificada' ? 'selected' : '' %>>Falta justificada</option>
+      <option value="falta_injustificada" <%= filtros.tipo === 'falta_injustificada' ? 'selected' : '' %>>Falta injustificada</option>
+      <option value="atestado" <%= filtros.tipo === 'atestado' ? 'selected' : '' %>>Atestado</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-secundario">Filtrar</button>
+</form>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Funcionário</th><th>Cargo</th><th>Tipo</th><th>Dias</th><th>Lançado por</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% if (ocorrencias.length === 0) { %>
+        <tr><td colspan="7" class="texto-suave">Nenhuma ocorrência encontrada.</td></tr>
+      <% } %>
+      <% ocorrencias.forEach(function(oc) { %>
+        <tr>
+          <td><%= String(oc.data_inicio).slice(0,10).split('-').reverse().join('/') %></td>
+          <td><a href="/funcionarios/<%= oc.funcionario_id %>"><%= oc.funcionario_nome %></a></td>
+          <td><%= oc.cargo %></td>
+          <td>
+            <% if (oc.tipo === 'falta_injustificada') { %><span class="tag tag-vermelha">Falta injustificada</span>
+            <% } else if (oc.tipo === 'falta_justificada') { %><span class="tag tag-azul">Falta justificada</span>
+            <% } else { %><span class="tag tag-cinza">Atestado</span><% } %>
+          </td>
+          <td><%= oc.dias %></td>
+          <td class="texto-suave"><%= oc.lancado_por_nome || '—' %></td>
+          <td>
+            <form method="post" action="/ocorrencias/<%= oc.id %>/excluir" onsubmit="return confirm('Excluir essa ocorrência?');">
+              <button type="submit" class="btn btn-secundario">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

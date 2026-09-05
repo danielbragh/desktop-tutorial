@@ -1,0 +1,7 @@
+node_modules/
+data/*.sqlite
+data/*.sqlite-journal
+uploads/atestados/*
+!uploads/atestados/.gitkeep
+.env
+*.log

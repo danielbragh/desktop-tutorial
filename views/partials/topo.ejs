@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof titulo !== 'undefined' ? titulo + ' · Sistema RH' : 'Sistema RH' %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <% if (typeof usuario !== 'undefined' && usuario) { %>
+      <aside class="sidebar">
+        <div class="sidebar-brand">Sistema RH</div>
+        <nav class="sidebar-nav">
+          <a href="/">Dashboard</a>
+          <a href="/funcionarios">Funcionários</a>
+          <a href="/obras">Obras</a>
+          <a href="/ocorrencias">Faltas / Atestados</a>
+          <a href="/pl/config">Configurar PL</a>
+          <a href="/pl/relatorio">Relatório de PL</a>
+          <% if (usuario.papel === 'admin') { %>
+            <a href="/usuarios">Usuários</a>
+          <% } %>
+        </nav>
+        <form class="sidebar-user" method="post" action="/logout">
+          <div class="sidebar-user-info">
+            <strong><%= usuario.nome %></strong>
+            <span><%= usuario.papel === 'admin' ? 'Administrador' : 'RH' %></span>
+          </div>
+          <button type="submit" class="btn btn-link">Sair</button>
+        </form>
+      </aside>
+    <% } %>
+    <main class="content">

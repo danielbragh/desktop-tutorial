@@ -1,0 +1,32 @@
+{
+  "name": "sistema-rh",
+  "version": "1.0.0",
+  "description": "Sistema de RH para cadastro de funcionários, controle de faltas/atestados e cálculo de PL (participação nos lucros).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielbragh/desktop-tutorial.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danielbragh/desktop-tutorial/issues"
+  },
+  "homepage": "https://github.com/danielbragh/desktop-tutorial#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "chart.js": "^4.5.1",
+    "dayjs": "^1.11.23",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.3.0"
+  }
+}

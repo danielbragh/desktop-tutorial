@@ -1,0 +1,34 @@
+<%- include('../partials/topo', { titulo: 'Obras', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Obras</h1>
+    <p class="subtitulo">Canteiros de obra da empresa.</p>
+  </div>
+  <a href="/obras/nova" class="btn">+ Nova obra</a>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Nome</th><th>Código</th><th>Endereço</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% if (obras.length === 0) { %>
+        <tr><td colspan="5" class="texto-suave">Nenhuma obra cadastrada ainda.</td></tr>
+      <% } %>
+      <% obras.forEach(function(o) { %>
+        <tr>
+          <td><%= o.nome %></td>
+          <td><%= o.codigo %></td>
+          <td><%= o.endereco || '—' %></td>
+          <td>
+            <% if (o.status === 'ativa') { %><span class="tag tag-verde">Ativa</span>
+            <% } else { %><span class="tag tag-cinza">Encerrada</span><% } %>
+          </td>
+          <td><a href="/obras/<%= o.id %>/editar">Editar</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

@@ -1,0 +1,85 @@
+<%- include('../partials/topo', { titulo: 'Configurar PL', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Configuração da PL</h1>
+    <p class="subtitulo">Parâmetros usados para calcular a Participação nos Lucros de cada ano-base.</p>
+  </div>
+</div>
+
+<div class="alerta alerta-aviso">
+  Este é um <strong>modelo genérico e configurável</strong>, não é a reprodução literal da Convenção
+  Coletiva do SINDUSCON. Ajuste os parâmetros abaixo para refletir a regra vigente da categoria/ano
+  antes de fechar o pagamento.
+</div>
+
+<% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+
+<form class="filtros" method="get" action="/pl/config">
+  <div class="campo">
+    <label for="anoFiltro">Ver configuração do ano</label>
+    <input type="number" id="anoFiltro" name="ano" value="<%= ano %>" />
+  </div>
+  <button type="submit" class="btn btn-secundario">Carregar</button>
+</form>
+
+<div class="card" style="max-width: 720px;">
+  <form method="post" action="/pl/config">
+    <div class="form-grid">
+      <div class="campo">
+        <label for="ano">Ano-base</label>
+        <input type="number" id="ano" name="ano" value="<%= config ? config.ano : ano %>" required />
+      </div>
+      <div class="campo"></div>
+      <div class="campo">
+        <label for="periodo_inicio">Início do período de apuração</label>
+        <input type="date" id="periodo_inicio" name="periodo_inicio" value="<%= config ? String(config.periodo_inicio).slice(0,10) : '' %>" required />
+      </div>
+      <div class="campo">
+        <label for="periodo_fim">Fim do período de apuração</label>
+        <input type="date" id="periodo_fim" name="periodo_fim" value="<%= config ? String(config.periodo_fim).slice(0,10) : '' %>" required />
+      </div>
+      <div class="campo">
+        <label for="valor_fixo">Parcela fixa (R$)</label>
+        <input type="number" id="valor_fixo" name="valor_fixo" step="0.01" min="0" value="<%= config ? config.valor_fixo : 0 %>" />
+      </div>
+      <div class="campo">
+        <label for="percentual_variavel">Parcela variável (% do salário)</label>
+        <input type="number" id="percentual_variavel" name="percentual_variavel" step="0.01" min="0" value="<%= config ? config.percentual_variavel : 0 %>" />
+      </div>
+      <div class="campo">
+        <label for="meses_totais_periodo">Meses totais do período</label>
+        <input type="number" id="meses_totais_periodo" name="meses_totais_periodo" min="1" value="<%= config ? config.meses_totais_periodo : 12 %>" />
+      </div>
+      <div class="campo">
+        <label for="limite_faltas_injustificadas_mes">Limite de faltas injustificadas por mês</label>
+        <input type="number" id="limite_faltas_injustificadas_mes" name="limite_faltas_injustificadas_mes" min="0" value="<%= config ? config.limite_faltas_injustificadas_mes : 1 %>" />
+        <span class="nota">Acima desse número de dias de falta no mês, o mês pode deixar de contar (se a opção abaixo estiver marcada).</span>
+      </div>
+      <div class="campo">
+        <label for="limite_faltas_zerar">Total de faltas injustificadas no período que zera a PL (opcional)</label>
+        <input type="number" id="limite_faltas_zerar" name="limite_faltas_zerar" min="0" value="<%= config && config.limite_faltas_zerar !== null && config.limite_faltas_zerar !== undefined ? config.limite_faltas_zerar : '' %>" />
+      </div>
+      <div class="campo">
+        <label>
+          <input type="checkbox" name="descontar_mes_por_excesso_faltas" <%= (!config || config.descontar_mes_por_excesso_faltas) ? 'checked' : '' %> style="width:auto; display:inline-block; margin-right:6px;" />
+          Descontar o mês quando exceder o limite de faltas injustificadas
+        </label>
+      </div>
+    </div>
+    <div class="acoes">
+      <button type="submit" class="btn">Salvar configuração</button>
+    </div>
+  </form>
+</div>
+
+<% if (config) { %>
+<div class="card" style="max-width: 720px;">
+  <h2>Calcular PL de <%= config.ano %></h2>
+  <p class="texto-suave">Recalcula a PL de todos os funcionários com base na configuração salva acima. Um novo cálculo substitui o anterior para esse ano.</p>
+  <form method="post" action="/pl/calcular" onsubmit="return confirm('Calcular a PL de todos os funcionários para o ano <%= config.ano %>? Isso substitui qualquer cálculo anterior desse ano.');">
+    <input type="hidden" name="ano" value="<%= config.ano %>" />
+    <button type="submit" class="btn">Calcular PL agora</button>
+  </form>
+</div>
+<% } %>
+<%- include('../partials/rodape', { usuario }) %>

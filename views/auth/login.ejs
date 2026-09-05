@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrar · Sistema RH</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <h1>Sistema RH</h1>
+      <% if (erro) { %>
+        <div class="alerta alerta-erro"><%= erro %></div>
+      <% } %>
+      <form method="post" action="/login">
+        <div class="campo">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required autofocus />
+        </div>
+        <div class="campo" style="margin-top: 12px;">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" required />
+        </div>
+        <button type="submit" class="btn" style="width: 100%; margin-top: 18px;">Entrar</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

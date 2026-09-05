@@ -1,0 +1,65 @@
+<%- include('../partials/topo', { titulo: 'Novo lançamento', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Lançar falta ou atestado</h1>
+  </div>
+</div>
+
+<% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+
+<div class="card" style="max-width: 640px;">
+  <form method="post" action="/ocorrencias" enctype="multipart/form-data">
+    <div class="form-grid">
+      <div class="campo" style="grid-column: 1 / -1;">
+        <label for="funcionario_id">Funcionário</label>
+        <select id="funcionario_id" name="funcionario_id" required>
+          <option value="">Selecione</option>
+          <% funcionarios.forEach(function(f) { %>
+            <option value="<%= f.id %>" <%= String(funcionarioSelecionado) === String(f.id) ? 'selected' : '' %>><%= f.nome %> (<%= f.matricula %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="tipo">Tipo de ocorrência</label>
+        <select id="tipo" name="tipo" onchange="alternarCid()" required>
+          <option value="falta_justificada">Falta justificada</option>
+          <option value="falta_injustificada">Falta injustificada</option>
+          <option value="atestado">Atestado médico</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="data_inicio">Data de início</label>
+        <input type="date" id="data_inicio" name="data_inicio" required />
+      </div>
+      <div class="campo">
+        <label for="dias">Quantidade de dias</label>
+        <input type="number" id="dias" name="dias" min="1" value="1" required />
+      </div>
+      <div class="campo" id="campo-cid">
+        <label for="cid">CID (opcional)</label>
+        <input type="text" id="cid" name="cid" placeholder="Ex.: J11" />
+      </div>
+      <div class="campo" style="grid-column: 1 / -1;">
+        <label for="observacao">Observação</label>
+        <textarea id="observacao" name="observacao" rows="3"></textarea>
+      </div>
+      <div class="campo" style="grid-column: 1 / -1;">
+        <label for="anexo">Anexo do atestado (PDF, PNG ou JPG — opcional)</label>
+        <input type="file" id="anexo" name="anexo" accept=".pdf,.png,.jpg,.jpeg" />
+      </div>
+    </div>
+    <div class="acoes">
+      <button type="submit" class="btn">Salvar</button>
+      <a href="/ocorrencias" class="btn btn-secundario">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  function alternarCid() {
+    const tipo = document.getElementById('tipo').value;
+    document.getElementById('campo-cid').style.display = tipo === 'atestado' ? 'flex' : 'none';
+  }
+  alternarCid();
+</script>
+<%- include('../partials/rodape', { usuario }) %>

@@ -1,0 +1,68 @@
+<%- include('../partials/topo', { titulo: 'Relatório de PL', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Relatório de PL — <%= ano %></h1>
+    <p class="subtitulo">Resultado do último cálculo realizado para o ano selecionado.</p>
+  </div>
+</div>
+
+<form class="filtros" method="get" action="/pl/relatorio">
+  <div class="campo">
+    <label for="ano">Ano</label>
+    <input type="number" id="ano" name="ano" value="<%= ano %>" />
+  </div>
+  <button type="submit" class="btn btn-secundario">Ver</button>
+  <% if (anos.length) { %>
+    <span class="nota" style="margin-left: auto;">Anos com cálculo: <%= anos.join(', ') %></span>
+  <% } %>
+</form>
+
+<div class="grid grid-3" style="margin-bottom: 20px;">
+  <div class="kpi">
+    <div class="kpi-rotulo">Funcionários calculados</div>
+    <div class="kpi-valor"><%= calculos.length %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Total de PL a pagar</div>
+    <div class="kpi-valor"><%= totalGeral.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Zerados por excesso de faltas</div>
+    <div class="kpi-valor"><%= calculos.filter(c => c.zerado_por_faltas).length %></div>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Funcionário</th><th>Cargo</th><th>Vínculo</th><th>Meses computados</th>
+        <th>Faltas injust.</th><th>Valor base</th><th>Fração</th><th class="texto-direita">Valor a pagar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (calculos.length === 0) { %>
+        <tr><td colspan="8" class="texto-suave">Nenhum cálculo encontrado para esse ano. Vá em "Configurar PL" e clique em "Calcular PL agora".</td></tr>
+      <% } %>
+      <% calculos.forEach(function(c) { %>
+        <tr>
+          <td><%= c.nome %> <span class="texto-suave">(<%= c.matricula %>)</span></td>
+          <td><%= c.cargo %></td>
+          <td><%= c.tipo_vinculo === 'obra' ? ('Obra: ' + (c.obra_nome || '—')) : 'Escritório' %></td>
+          <td><%= c.meses_computados %></td>
+          <td><%= c.total_faltas_injustificadas %></td>
+          <td><%= c.valor_base.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) %></td>
+          <td><%= (c.fracao * 100).toFixed(0) %>%</td>
+          <td class="texto-direita mono">
+            <% if (c.zerado_por_faltas) { %>
+              <span class="tag tag-vermelha">Zerado</span>
+            <% } else { %>
+              <strong><%= c.valor_liquido.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) %></strong>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/rodape', { usuario }) %>
