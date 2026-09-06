@@ -1,7 +1,13 @@
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const pgSession = require('connect-pg-simple')(session);
 
+const { pool } = require('./db');
+const { csrfToken, verifyCsrf } = require('./middleware/csrf');
 const authRoutes = require('./routes/auth');
 const usuariosRoutes = require('./routes/usuarios');
 const obrasRoutes = require('./routes/obras');
@@ -11,22 +17,79 @@ const plRoutes = require('./routes/pl');
 const dashboardRoutes = require('./routes/dashboard');
 const { requireLogin } = require('./middleware/auth');
 
+const PRODUCAO = process.env.NODE_ENV === 'production';
+
 const app = express();
+
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// Gera um nonce por requisição para permitir os poucos <script> inline que
+// renderizam dados dinâmicos (dashboard, formulários), sem precisar
+// enfraquecer a CSP com 'unsafe-inline'.
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        // style-src permanece com 'unsafe-inline' porque as views usam
+        // atributos style="" para pequenos ajustes de espaçamento; o risco
+        // de XSS via CSS é muito menor do que via script-src, que fica
+        // restrito por nonce acima.
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: PRODUCAO ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: PRODUCAO ? undefined : false,
+  })
+);
+
+const limitadorGeral = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limitadorGeral);
+
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(express.json({ limit: '100kb' }));
 
 app.use(
   session({
+    store: new pgSession({ pool, tableName: 'session', createTableIfMissing: true }),
     secret: process.env.SESSION_SECRET || 'rh-sistema-segredo-de-sessao-troque-em-producao',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 8 },
+    rolling: true,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 8,
+      httpOnly: true,
+      secure: PRODUCAO,
+      sameSite: 'lax',
+    },
   })
 );
+
+app.use(csrfToken);
+app.use(verifyCsrf);
 
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
 app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js')));
@@ -57,7 +120,7 @@ app.use((err, req, res, next) => {
   res.status(500).render('erro', {
     titulo: 'Erro inesperado',
     mensagem: 'Ocorreu um erro ao processar sua solicitação.',
-    usuario: req.session.usuario,
+    usuario: req.session?.usuario,
   });
 });
 

@@ -1,0 +1,32 @@
+<%- include('../partials/topo', { titulo: 'Minha conta', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Minha conta</h1>
+    <p class="subtitulo"><%= usuario.nome %> · <%= usuario.email %></p>
+  </div>
+</div>
+
+<% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+<% if (sucesso) { %><div class="alerta alerta-info"><%= sucesso %></div><% } %>
+
+<div class="card" style="max-width: 480px;">
+  <h2>Trocar senha</h2>
+  <form method="post" action="/minha-conta/senha">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div class="campo">
+      <label for="senha_atual">Senha atual</label>
+      <input type="password" id="senha_atual" name="senha_atual" required />
+    </div>
+    <div class="campo" style="margin-top: 10px;">
+      <label for="nova_senha">Nova senha</label>
+      <input type="password" id="nova_senha" name="nova_senha" required minlength="10" />
+      <span class="nota">Mínimo 10 caracteres, com maiúscula, minúscula e número.</span>
+    </div>
+    <div class="campo" style="margin-top: 10px;">
+      <label for="confirmar_senha">Confirmar nova senha</label>
+      <input type="password" id="confirmar_senha" name="confirmar_senha" required minlength="10" />
+    </div>
+    <button type="submit" class="btn" style="margin-top: 14px;">Salvar nova senha</button>
+  </form>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

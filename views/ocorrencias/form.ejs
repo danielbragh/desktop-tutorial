@@ -9,6 +9,7 @@
 
 <div class="card" style="max-width: 640px;">
   <form method="post" action="/ocorrencias" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <div class="form-grid">
       <div class="campo" style="grid-column: 1 / -1;">
         <label for="funcionario_id">Funcionário</label>
@@ -55,7 +56,7 @@
   </form>
 </div>
 
-<script>
+<script nonce="<%= nonce %>">
   function alternarCid() {
     const tipo = document.getElementById('tipo').value;
     document.getElementById('campo-cid').style.display = tipo === 'atestado' ? 'flex' : 'none';

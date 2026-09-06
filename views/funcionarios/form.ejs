@@ -9,6 +9,7 @@
 
 <div class="card" style="max-width: 720px;">
   <form method="post" action="<%= funcionario && funcionario.id ? '/funcionarios/' + funcionario.id : '/funcionarios' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <div class="form-grid">
       <div class="campo">
         <label for="nome">Nome completo</label>
@@ -71,7 +72,7 @@
   </form>
 </div>
 
-<script>
+<script nonce="<%= nonce %>">
   function alternarObra() {
     const tipo = document.getElementById('tipo_vinculo').value;
     document.getElementById('campo-obra').style.display = tipo === 'obra' ? 'flex' : 'none';

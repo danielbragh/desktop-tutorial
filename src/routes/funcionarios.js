@@ -1,15 +1,17 @@
 const express = require('express');
-const db = require('../db');
+const { body, validationResult } = require('express-validator');
+const { db } = require('../db');
+const auditLog = require('../utils/auditLog');
 const { requireLogin } = require('../middleware/auth');
 const { cpfValido, limparCpf } = require('../utils/cpf');
 
 const router = express.Router();
 
-function carregarObras() {
-  return db.prepare("SELECT * FROM obras WHERE status = 'ativa' ORDER BY nome").all();
+async function carregarObras() {
+  return db.all("SELECT * FROM obras WHERE status = 'ativa' ORDER BY nome");
 }
 
-router.get('/funcionarios', requireLogin, (req, res) => {
+router.get('/funcionarios', requireLogin, async (req, res) => {
   const { busca, tipo_vinculo, obra_id, status } = req.query;
   let sql = `
     SELECT f.*, o.nome AS obra_nome
@@ -20,26 +22,25 @@ router.get('/funcionarios', requireLogin, (req, res) => {
   const params = [];
 
   if (busca) {
-    sql += ' AND (f.nome LIKE ? OR f.cpf LIKE ? OR f.matricula LIKE ?)';
-    const termo = `%${busca}%`;
-    params.push(termo, termo, termo);
+    params.push(`%${busca}%`, `%${busca}%`, `%${busca}%`);
+    sql += ` AND (f.nome ILIKE $${params.length - 2} OR f.cpf ILIKE $${params.length - 1} OR f.matricula ILIKE $${params.length})`;
   }
   if (tipo_vinculo) {
-    sql += ' AND f.tipo_vinculo = ?';
     params.push(tipo_vinculo);
+    sql += ` AND f.tipo_vinculo = $${params.length}`;
   }
   if (obra_id) {
-    sql += ' AND f.obra_id = ?';
     params.push(obra_id);
+    sql += ` AND f.obra_id = $${params.length}`;
   }
   if (status) {
-    sql += ' AND f.status = ?';
     params.push(status);
+    sql += ` AND f.status = $${params.length}`;
   }
   sql += ' ORDER BY f.nome';
 
-  const funcionarios = db.prepare(sql).all(...params);
-  const obras = db.prepare('SELECT * FROM obras ORDER BY nome').all();
+  const funcionarios = await db.all(sql, params);
+  const obras = await db.all('SELECT * FROM obras ORDER BY nome');
 
   res.render('funcionarios/list', {
     funcionarios,
@@ -49,40 +50,41 @@ router.get('/funcionarios', requireLogin, (req, res) => {
   });
 });
 
-router.get('/funcionarios/novo', requireLogin, (req, res) => {
+router.get('/funcionarios/novo', requireLogin, async (req, res) => {
   res.render('funcionarios/form', {
     funcionario: null,
-    obras: carregarObras(),
+    obras: await carregarObras(),
     erro: null,
     usuario: req.session.usuario,
   });
 });
 
-function validarDados(body) {
-  const { nome, matricula, cpf, cargo, data_admissao, salario, tipo_vinculo, obra_id } = body;
+const validarFuncionario = [
+  body('nome').trim().notEmpty().withMessage('Nome é obrigatório.'),
+  body('matricula').trim().notEmpty().withMessage('Matrícula é obrigatória.'),
+  body('cpf')
+    .customSanitizer((v) => limparCpf(v))
+    .custom((v) => cpfValido(v))
+    .withMessage('CPF inválido.'),
+  body('cargo').trim().notEmpty().withMessage('Cargo é obrigatório.'),
+  body('data_admissao').isISO8601().withMessage('Data de admissão inválida.'),
+  body('salario').isFloat({ gt: 0 }).withMessage('Salário deve ser maior que zero.'),
+  body('tipo_vinculo').isIn(['escritorio', 'obra']).withMessage('Tipo de vínculo inválido.'),
+  body('obra_id').custom((valor, { req }) => {
+    if (req.body.tipo_vinculo === 'obra' && !valor) {
+      throw new Error('Funcionários de obra precisam estar vinculados a uma obra.');
+    }
+    return true;
+  }),
+];
 
-  if (!nome || !matricula || !cpf || !cargo || !data_admissao || !salario || !tipo_vinculo) {
-    return 'Preencha todos os campos obrigatórios.';
-  }
-  if (!cpfValido(cpf)) {
-    return 'CPF inválido.';
-  }
-  if (Number(salario) <= 0) {
-    return 'Salário deve ser maior que zero.';
-  }
-  if (tipo_vinculo === 'obra' && !obra_id) {
-    return 'Funcionários de obra precisam estar vinculados a uma obra.';
-  }
-  return null;
-}
-
-router.post('/funcionarios', requireLogin, (req, res) => {
-  const erro = validarDados(req.body);
-  if (erro) {
+router.post('/funcionarios', requireLogin, validarFuncionario, async (req, res) => {
+  const erros = validationResult(req);
+  if (!erros.isEmpty()) {
     return res.status(400).render('funcionarios/form', {
       funcionario: req.body,
-      obras: carregarObras(),
-      erro,
+      obras: await carregarObras(),
+      erro: erros.array()[0].msg,
       usuario: req.session.usuario,
     });
   }
@@ -90,49 +92,51 @@ router.post('/funcionarios', requireLogin, (req, res) => {
   const { nome, matricula, cpf, cargo, data_admissao, salario, tipo_vinculo, obra_id } = req.body;
 
   try {
-    db.prepare(
+    const criado = await db.get(
       `INSERT INTO funcionarios
         (nome, matricula, cpf, cargo, data_admissao, salario, tipo_vinculo, obra_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')`
-    ).run(
-      nome,
-      matricula,
-      limparCpf(cpf),
-      cargo,
-      data_admissao,
-      Number(salario),
-      tipo_vinculo,
-      tipo_vinculo === 'obra' ? Number(obra_id) : null
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ativo') RETURNING id`,
+      [
+        nome,
+        matricula,
+        cpf,
+        cargo,
+        data_admissao,
+        Number(salario),
+        tipo_vinculo,
+        tipo_vinculo === 'obra' ? Number(obra_id) : null,
+      ]
     );
+    await auditLog.registrar(req, { acao: 'funcionario_criado', entidade: 'funcionarios', entidadeId: criado.id });
     res.redirect('/funcionarios');
   } catch (e) {
     res.status(400).render('funcionarios/form', {
       funcionario: req.body,
-      obras: carregarObras(),
+      obras: await carregarObras(),
       erro: 'Não foi possível salvar (matrícula ou CPF já cadastrado?).',
       usuario: req.session.usuario,
     });
   }
 });
 
-router.get('/funcionarios/:id/editar', requireLogin, (req, res) => {
-  const funcionario = db.prepare('SELECT * FROM funcionarios WHERE id = ?').get(req.params.id);
+router.get('/funcionarios/:id/editar', requireLogin, async (req, res) => {
+  const funcionario = await db.get('SELECT * FROM funcionarios WHERE id = $1', [req.params.id]);
   if (!funcionario) return res.redirect('/funcionarios');
   res.render('funcionarios/form', {
     funcionario,
-    obras: carregarObras(),
+    obras: await carregarObras(),
     erro: null,
     usuario: req.session.usuario,
   });
 });
 
-router.post('/funcionarios/:id', requireLogin, (req, res) => {
-  const erro = validarDados(req.body);
-  if (erro) {
+router.post('/funcionarios/:id', requireLogin, validarFuncionario, async (req, res) => {
+  const erros = validationResult(req);
+  if (!erros.isEmpty()) {
     return res.status(400).render('funcionarios/form', {
       funcionario: { ...req.body, id: req.params.id },
-      obras: carregarObras(),
-      erro,
+      obras: await carregarObras(),
+      erro: erros.array()[0].msg,
       usuario: req.session.usuario,
     });
   }
@@ -141,47 +145,49 @@ router.post('/funcionarios/:id', requireLogin, (req, res) => {
     req.body;
 
   try {
-    db.prepare(
+    await db.run(
       `UPDATE funcionarios SET
-        nome = ?, matricula = ?, cpf = ?, cargo = ?, data_admissao = ?, salario = ?,
-        tipo_vinculo = ?, obra_id = ?, status = ?, data_desligamento = ?
-       WHERE id = ?`
-    ).run(
-      nome,
-      matricula,
-      limparCpf(cpf),
-      cargo,
-      data_admissao,
-      Number(salario),
-      tipo_vinculo,
-      tipo_vinculo === 'obra' ? Number(obra_id) : null,
-      status === 'desligado' ? 'desligado' : 'ativo',
-      status === 'desligado' ? data_desligamento || null : null,
-      req.params.id
+        nome = $1, matricula = $2, cpf = $3, cargo = $4, data_admissao = $5, salario = $6,
+        tipo_vinculo = $7, obra_id = $8, status = $9, data_desligamento = $10
+       WHERE id = $11`,
+      [
+        nome,
+        matricula,
+        cpf,
+        cargo,
+        data_admissao,
+        Number(salario),
+        tipo_vinculo,
+        tipo_vinculo === 'obra' ? Number(obra_id) : null,
+        status === 'desligado' ? 'desligado' : 'ativo',
+        status === 'desligado' ? data_desligamento || null : null,
+        req.params.id,
+      ]
     );
+    await auditLog.registrar(req, { acao: 'funcionario_editado', entidade: 'funcionarios', entidadeId: req.params.id });
     res.redirect('/funcionarios');
   } catch (e) {
     res.status(400).render('funcionarios/form', {
       funcionario: { ...req.body, id: req.params.id },
-      obras: carregarObras(),
+      obras: await carregarObras(),
       erro: 'Não foi possível salvar (matrícula ou CPF já cadastrado em outro funcionário?).',
       usuario: req.session.usuario,
     });
   }
 });
 
-router.get('/funcionarios/:id', requireLogin, (req, res) => {
-  const funcionario = db
-    .prepare(
-      `SELECT f.*, o.nome AS obra_nome FROM funcionarios f
-       LEFT JOIN obras o ON o.id = f.obra_id WHERE f.id = ?`
-    )
-    .get(req.params.id);
+router.get('/funcionarios/:id', requireLogin, async (req, res) => {
+  const funcionario = await db.get(
+    `SELECT f.*, o.nome AS obra_nome FROM funcionarios f
+     LEFT JOIN obras o ON o.id = f.obra_id WHERE f.id = $1`,
+    [req.params.id]
+  );
   if (!funcionario) return res.redirect('/funcionarios');
 
-  const ocorrencias = db
-    .prepare('SELECT * FROM ocorrencias WHERE funcionario_id = ? ORDER BY data_inicio DESC')
-    .all(req.params.id);
+  const ocorrencias = await db.all(
+    'SELECT * FROM ocorrencias WHERE funcionario_id = $1 ORDER BY data_inicio DESC',
+    [req.params.id]
+  );
 
   res.render('funcionarios/detalhe', { funcionario, ocorrencias, usuario: req.session.usuario });
 });

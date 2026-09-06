@@ -59,6 +59,7 @@
           <td><% if (oc.anexo) { %><a href="/uploads/atestados/<%= oc.anexo %>" target="_blank">Ver arquivo</a><% } else { %>—<% } %></td>
           <td>
             <form method="post" action="/ocorrencias/<%= oc.id %>/excluir" onsubmit="return confirm('Excluir essa ocorrência?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button type="submit" class="btn btn-secundario">Excluir</button>
             </form>
           </td>

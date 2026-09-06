@@ -24,6 +24,7 @@
 
 <div class="card" style="max-width: 720px;">
   <form method="post" action="/pl/config">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <div class="form-grid">
       <div class="campo">
         <label for="ano">Ano-base</label>
@@ -77,6 +78,7 @@
   <h2>Calcular PL de <%= config.ano %></h2>
   <p class="texto-suave">Recalcula a PL de todos os funcionários com base na configuração salva acima. Um novo cálculo substitui o anterior para esse ano.</p>
   <form method="post" action="/pl/calcular" onsubmit="return confirm('Calcular a PL de todos os funcionários para o ano <%= config.ano %>? Isso substitui qualquer cálculo anterior desse ano.');">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <input type="hidden" name="ano" value="<%= config.ano %>" />
     <button type="submit" class="btn">Calcular PL agora</button>
   </form>

@@ -52,6 +52,7 @@
           <td class="texto-suave"><%= oc.lancado_por_nome || '—' %></td>
           <td>
             <form method="post" action="/ocorrencias/<%= oc.id %>/excluir" onsubmit="return confirm('Excluir essa ocorrência?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button type="submit" class="btn btn-secundario">Excluir</button>
             </form>
           </td>

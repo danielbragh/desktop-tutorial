@@ -9,6 +9,7 @@
 
 <div class="card" style="max-width: 560px;">
   <form method="post" action="<%= obra && obra.id ? '/obras/' + obra.id : '/obras' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <div class="form-grid">
       <div class="campo">
         <label for="nome">Nome da obra</label>
