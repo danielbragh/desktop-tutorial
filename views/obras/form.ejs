@@ -1,0 +1,40 @@
+<%- include('../partials/topo', { titulo: obra && obra.id ? 'Editar obra' : 'Nova obra', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1><%= obra && obra.id ? 'Editar obra' : 'Nova obra' %></h1>
+  </div>
+</div>
+
+<% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+
+<div class="card" style="max-width: 560px;">
+  <form method="post" action="<%= obra && obra.id ? '/obras/' + obra.id : '/obras' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div class="form-grid">
+      <div class="campo">
+        <label for="nome">Nome da obra</label>
+        <input type="text" id="nome" name="nome" value="<%= obra ? obra.nome : '' %>" required />
+      </div>
+      <div class="campo">
+        <label for="codigo">Código</label>
+        <input type="text" id="codigo" name="codigo" value="<%= obra ? obra.codigo : '' %>" required />
+      </div>
+      <div class="campo" style="grid-column: 1 / -1;">
+        <label for="endereco">Endereço</label>
+        <input type="text" id="endereco" name="endereco" value="<%= obra && obra.endereco ? obra.endereco : '' %>" />
+      </div>
+      <div class="campo">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="ativa" <%= (!obra || obra.status === 'ativa') ? 'selected' : '' %>>Ativa</option>
+          <option value="encerrada" <%= (obra && obra.status === 'encerrada') ? 'selected' : '' %>>Encerrada</option>
+        </select>
+      </div>
+    </div>
+    <div class="acoes">
+      <button type="submit" class="btn">Salvar</button>
+      <a href="/obras" class="btn btn-secundario">Cancelar</a>
+    </div>
+  </form>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

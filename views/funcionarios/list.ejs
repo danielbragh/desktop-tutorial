@@ -1,0 +1,72 @@
+<%- include('../partials/topo', { titulo: 'Funcionários', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Funcionários</h1>
+    <p class="subtitulo">Cadastro de colaboradores do escritório e das obras.</p>
+  </div>
+  <a href="/funcionarios/novo" class="btn">+ Novo funcionário</a>
+</div>
+
+<form class="filtros" method="get" action="/funcionarios">
+  <div class="campo">
+    <label for="busca">Buscar</label>
+    <input type="text" id="busca" name="busca" placeholder="Nome, CPF ou matrícula" value="<%= filtros.busca || '' %>" />
+  </div>
+  <div class="campo">
+    <label for="tipo_vinculo">Vínculo</label>
+    <select id="tipo_vinculo" name="tipo_vinculo">
+      <option value="">Todos</option>
+      <option value="escritorio" <%= filtros.tipo_vinculo === 'escritorio' ? 'selected' : '' %>>Escritório</option>
+      <option value="obra" <%= filtros.tipo_vinculo === 'obra' ? 'selected' : '' %>>Obra</option>
+    </select>
+  </div>
+  <div class="campo">
+    <label for="obra_id">Obra</label>
+    <select id="obra_id" name="obra_id">
+      <option value="">Todas</option>
+      <% obras.forEach(function(o) { %>
+        <option value="<%= o.id %>" <%= String(filtros.obra_id) === String(o.id) ? 'selected' : '' %>><%= o.nome %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="campo">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">Todos</option>
+      <option value="ativo" <%= filtros.status === 'ativo' ? 'selected' : '' %>>Ativo</option>
+      <option value="desligado" <%= filtros.status === 'desligado' ? 'selected' : '' %>>Desligado</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-secundario">Filtrar</button>
+</form>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Matrícula</th><th>Nome</th><th>Cargo</th><th>Vínculo</th><th>Obra</th><th>Admissão</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (funcionarios.length === 0) { %>
+        <tr><td colspan="8" class="texto-suave">Nenhum funcionário encontrado.</td></tr>
+      <% } %>
+      <% funcionarios.forEach(function(f) { %>
+        <tr>
+          <td><%= f.matricula %></td>
+          <td><a href="/funcionarios/<%= f.id %>"><%= f.nome %></a></td>
+          <td><%= f.cargo %></td>
+          <td><%= f.tipo_vinculo === 'obra' ? 'Obra' : 'Escritório' %></td>
+          <td><%= f.obra_nome || '—' %></td>
+          <td><%= f.data_admissao.slice(0,10).split('-').reverse().join('/') %></td>
+          <td>
+            <% if (f.status === 'ativo') { %><span class="tag tag-verde">Ativo</span>
+            <% } else { %><span class="tag tag-vermelha">Desligado</span><% } %>
+          </td>
+          <td><a href="/funcionarios/<%= f.id %>/editar">Editar</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

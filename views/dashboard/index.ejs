@@ -1,0 +1,129 @@
+<%- include('../partials/topo', { titulo: 'Dashboard', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="subtitulo">Indicadores de frequência e de folha para apoiar o RH.</p>
+  </div>
+</div>
+
+<form class="filtros" method="get" action="/">
+  <div class="campo">
+    <label for="inicio">Faltas/atestados de</label>
+    <input type="date" id="inicio" name="inicio" value="<%= filtros.inicio %>" />
+  </div>
+  <div class="campo">
+    <label for="fim">até</label>
+    <input type="date" id="fim" name="fim" value="<%= filtros.fim %>" />
+  </div>
+  <div class="campo">
+    <label for="anoPL">Ano da PL</label>
+    <input type="number" id="anoPL" name="anoPL" value="<%= filtros.anoPL %>" />
+  </div>
+  <button type="submit" class="btn btn-secundario">Aplicar</button>
+</form>
+
+<div class="grid grid-4" style="margin-bottom: 24px;">
+  <div class="kpi">
+    <div class="kpi-rotulo">Funcionários ativos</div>
+    <div class="kpi-valor"><%= totalFuncionariosAtivos %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Obras ativas</div>
+    <div class="kpi-valor"><%= totalObrasAtivas %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Ocorrências no período</div>
+    <div class="kpi-valor"><%= totalOcorrenciasPeriodo %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Total de PL (<%= filtros.anoPL %>)</div>
+    <div class="kpi-valor"><%= totalPLAno.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) %></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Cargos com mais faltas/atestados (dias)</h2>
+    <div class="chart-box"><canvas id="graficoCargosFaltas"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Ocorrências por tipo</h2>
+    <div class="chart-box"><canvas id="graficoTipoOcorrencia"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Massa salarial por cargo</h2>
+    <p class="texto-suave" style="margin-top:-8px;">Soma dos salários de funcionários ativos, por cargo.</p>
+    <div class="chart-box"><canvas id="graficoSalarioPorCargo"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>PL paga por cargo — <%= filtros.anoPL %></h2>
+    <p class="texto-suave" style="margin-top:-8px;">Valor líquido de PL calculado, somado por cargo.</p>
+    <div class="chart-box"><canvas id="graficoPLPorCargo"></canvas></div>
+  </div>
+</div>
+
+<script src="/vendor/chart.js" nonce="<%= nonce %>"></script>
+<script nonce="<%= nonce %>">
+  const paletaAzul = ['#2954ba', '#4d74cc', '#7695da', '#a0b7e8', '#c9d8f3'];
+  const paletaAlerta = ['#c0392b', '#d9776a', '#e9a89e'];
+
+  const cargosFaltas = <%- JSON.stringify(cargosComMaisFaltas) %>;
+  new Chart(document.getElementById('graficoCargosFaltas'), {
+    type: 'bar',
+    data: {
+      labels: cargosFaltas.map(r => r.cargo),
+      datasets: [{ label: 'Dias de ausência', data: cargosFaltas.map(r => r.total_dias), backgroundColor: '#2954ba' }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+
+  const tipoOcorrencia = <%- JSON.stringify(faltasPorTipo) %>;
+  const rotulosTipo = { falta_justificada: 'Falta justificada', falta_injustificada: 'Falta injustificada', atestado: 'Atestado' };
+  new Chart(document.getElementById('graficoTipoOcorrencia'), {
+    type: 'doughnut',
+    data: {
+      labels: tipoOcorrencia.map(r => rotulosTipo[r.tipo] || r.tipo),
+      datasets: [{ data: tipoOcorrencia.map(r => r.total_dias), backgroundColor: paletaAzul }]
+    },
+    options: { maintainAspectRatio: false }
+  });
+
+  const salarioPorCargo = <%- JSON.stringify(massaSalarialPorCargo) %>;
+  new Chart(document.getElementById('graficoSalarioPorCargo'), {
+    type: 'bar',
+    data: {
+      labels: salarioPorCargo.map(r => r.cargo),
+      datasets: [{ label: 'Massa salarial (R$)', data: salarioPorCargo.map(r => r.total_salarios), backgroundColor: '#1e8e5a' }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+
+  const plPorCargo = <%- JSON.stringify(plPorCargo) %>;
+  new Chart(document.getElementById('graficoPLPorCargo'), {
+    type: 'bar',
+    data: {
+      labels: plPorCargo.map(r => r.cargo),
+      datasets: [{ label: 'PL (R$)', data: plPorCargo.map(r => r.total_pl), backgroundColor: '#2954ba' }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+</script>
+<%- include('../partials/rodape', { usuario }) %>

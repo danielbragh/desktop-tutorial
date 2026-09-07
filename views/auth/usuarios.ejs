@@ -1,0 +1,67 @@
+<%- include('../partials/topo', { titulo: 'Usuários', usuario }) %>
+<div class="page-header">
+  <div>
+    <h1>Usuários do sistema</h1>
+    <p class="subtitulo">Pessoas do RH com acesso ao sistema.</p>
+  </div>
+</div>
+
+<% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Novo usuário</h2>
+    <form method="post" action="/usuarios">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="campo">
+        <label for="nome">Nome</label>
+        <input type="text" id="nome" name="nome" required />
+      </div>
+      <div class="campo" style="margin-top: 10px;">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required />
+      </div>
+      <div class="campo" style="margin-top: 10px;">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required minlength="10" />
+        <span class="nota">Mínimo 10 caracteres, com maiúscula, minúscula e número.</span>
+      </div>
+      <div class="campo" style="margin-top: 10px;">
+        <label for="papel">Papel</label>
+        <select id="papel" name="papel">
+          <option value="rh">RH</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <button type="submit" class="btn" style="margin-top: 14px;">Criar usuário</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Usuários cadastrados</h2>
+    <table>
+      <thead>
+        <tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% usuarios.forEach(function(u) { %>
+          <tr>
+            <td><%= u.nome %></td>
+            <td><%= u.email %></td>
+            <td><%= u.papel === 'admin' ? 'Administrador' : 'RH' %></td>
+            <td>
+              <% if (u.ativo) { %><span class="tag tag-verde">Ativo</span><% } else { %><span class="tag tag-vermelha">Inativo</span><% } %>
+            </td>
+            <td>
+              <form method="post" action="/usuarios/<%= u.id %>/alternar-ativo">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-secundario"><%= u.ativo ? 'Desativar' : 'Ativar' %></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('../partials/rodape', { usuario }) %>

@@ -1,0 +1,5 @@
+node_modules/
+uploads/atestados/*
+!uploads/atestados/.gitkeep
+.env
+*.log

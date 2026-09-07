@@ -1,0 +1,71 @@
+<%- include('../partials/topo', { titulo: funcionario.nome, usuario }) %>
+<div class="page-header">
+  <div>
+    <h1><%= funcionario.nome %></h1>
+    <p class="subtitulo">
+      <%= funcionario.cargo %> · Matrícula <%= funcionario.matricula %> ·
+      <%= funcionario.tipo_vinculo === 'obra' ? ('Obra: ' + funcionario.obra_nome) : 'Escritório' %>
+    </p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a href="/ocorrencias/nova?funcionario_id=<%= funcionario.id %>" class="btn">+ Lançar falta/atestado</a>
+    <a href="/funcionarios/<%= funcionario.id %>/editar" class="btn btn-secundario">Editar cadastro</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom: 20px;">
+  <div class="kpi">
+    <div class="kpi-rotulo">CPF</div>
+    <div class="kpi-valor" style="font-size:16px;"><%= funcionario.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Salário</div>
+    <div class="kpi-valor" style="font-size:16px;"><%= Number(funcionario.salario).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Admissão</div>
+    <div class="kpi-valor" style="font-size:16px;"><%= String(funcionario.data_admissao).slice(0,10).split('-').reverse().join('/') %></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-rotulo">Status</div>
+    <div class="kpi-valor" style="font-size:16px;">
+      <% if (funcionario.status === 'ativo') { %><span class="tag tag-verde">Ativo</span>
+      <% } else { %><span class="tag tag-vermelha">Desligado</span><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Histórico de faltas e atestados</h2>
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Tipo</th><th>Dias</th><th>CID</th><th>Observação</th><th>Anexo</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% if (ocorrencias.length === 0) { %>
+        <tr><td colspan="7" class="texto-suave">Nenhuma ocorrência lançada.</td></tr>
+      <% } %>
+      <% ocorrencias.forEach(function(oc) { %>
+        <tr>
+          <td><%= String(oc.data_inicio).slice(0,10).split('-').reverse().join('/') %></td>
+          <td>
+            <% if (oc.tipo === 'falta_injustificada') { %><span class="tag tag-vermelha">Falta injustificada</span>
+            <% } else if (oc.tipo === 'falta_justificada') { %><span class="tag tag-azul">Falta justificada</span>
+            <% } else { %><span class="tag tag-cinza">Atestado</span><% } %>
+          </td>
+          <td><%= oc.dias %></td>
+          <td><%= oc.cid || '—' %></td>
+          <td><%= oc.observacao || '—' %></td>
+          <td><% if (oc.anexo) { %><a href="/uploads/atestados/<%= oc.anexo %>" target="_blank">Ver arquivo</a><% } else { %>—<% } %></td>
+          <td>
+            <form method="post" action="/ocorrencias/<%= oc.id %>/excluir" onsubmit="return confirm('Excluir essa ocorrência?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-secundario">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/rodape', { usuario }) %>
