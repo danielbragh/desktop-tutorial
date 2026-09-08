@@ -22,6 +22,9 @@ Lucros) e um dashboard com indicadores.
   salarial por cargo e valor de PL pago por cargo.
 - **Login multiusuário** com papéis RH/Administrador, troca de senha e
   bloqueio de conta por tentativas indevidas.
+- **Autocadastro com aprovação**: qualquer pessoa pode criar uma conta em
+  `/cadastro`, mas ela nasce com papel `rh` e **inativa**. Só um
+  Administrador pode aprovar (ativar) o acesso, em **Usuários**.
 
 ## Banco de dados
 
@@ -60,7 +63,7 @@ pessoais (CPF, salário, atestados médicos):
 | Cabeçalhos HTTP | Helmet: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, HSTS em produção |
 | SQL injection | 100% de queries parametrizadas (`$1, $2...`) via `pg`, nenhuma concatenação de string em SQL |
 | Upload de arquivo | Validação por **assinatura binária real** do arquivo (magic bytes de PDF/PNG/JPEG), não apenas pelo `Content-Type` declarado pelo navegador; nome de arquivo gerado aleatoriamente; servido só para usuários autenticados |
-| Autorização | Middleware de papel (`admin` vs `rh`) nas rotas administrativas |
+| Autorização | Middleware de papel (`admin` vs `rh`) nas rotas administrativas; conta criada por autocadastro nasce sempre com papel `rh` e inativa — só um admin pode ativá-la |
 | Auditoria | Tabela `audit_log` registra login (sucesso/falha/bloqueio), criação/edição de registros, troca de senha e cálculo de PL, com IP e usuário |
 | Validação de entrada | `express-validator` nas rotas de escrita (funcionários, obras, usuários, configuração de PL) |
 | Configuração | Segredos fora do código-fonte (`.env`), com checagem que **recusa subir em produção** com `SESSION_SECRET` ou senha de admin padrão/fracos |
@@ -78,6 +81,36 @@ pessoais (CPF, salário, atestados médicos):
   não no processo Node.
 - **2FA**: não implementado nesta versão: pode ser adicionado (TOTP) na
   tabela `users` se o negócio exigir esse nível adicional.
+
+## Publicar online (deploy) com domínio próprio
+
+Este é um app **Node.js com backend próprio e banco PostgreSQL** — não é um
+site estático, então **não pode ser hospedado sozinho no GitHub Pages**
+(que só serve HTML/CSS/JS estático). O caminho recomendado é hospedar em um
+serviço que rode Node.js + PostgreSQL, publicando direto a partir do
+repositório no GitHub. O projeto já inclui um blueprint (`render.yaml`)
+para o [Render](https://render.com), que tem plano gratuito e é o mais
+simples de configurar:
+
+1. Suba este repositório no GitHub (se ainda não estiver lá).
+2. No painel do Render: **New +** → **Blueprint** → selecione o
+   repositório. O Render lê o `render.yaml` e cria automaticamente o
+   serviço web e o banco PostgreSQL, já conectados.
+3. Antes do primeiro deploy terminar, vá em **Environment** do serviço web
+   e defina `ADMIN_EMAIL` e `ADMIN_SENHA_INICIAL` com as credenciais do
+   administrador inicial. Elas só são usadas na primeira execução (quando
+   a tabela `users` está vazia) — **nunca coloque esses valores em um
+   arquivo versionado no git**, apenas nessa tela de variáveis de ambiente.
+4. Após o deploy, em **Settings → Custom Domains**, adicione seu domínio
+   (ex.: `rh.suaempresa.com.br`) e siga as instruções para apontar o DNS
+   (registro CNAME) — o Render emite o certificado HTTPS automaticamente.
+
+Outras opções compatíveis com o mesmo modelo (Node + Postgres, deploy a
+partir do GitHub, domínio próprio): [Railway](https://railway.app) e
+[Fly.io](https://fly.io). Se preferir Vercel ou Netlify, seria necessário
+reescrever as rotas como funções serverless e usar um Postgres externo
+(ex.: Neon, Supabase) — uma mudança de arquitetura maior, avise se quiser
+seguir por esse caminho.
 
 ## Como rodar
 
@@ -114,8 +147,9 @@ Veja `.env.example`. As mais importantes:
 - `SESSION_SECRET`: segredo para assinar o cookie de sessão. Gere um com
   `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
   **Obrigatório e não pode ser o valor padrão quando `NODE_ENV=production`.**
-- `ADMIN_SENHA_INICIAL`: senha do admin criado na primeira execução.
-  Obrigatória (mínimo 10 caracteres) quando `NODE_ENV=production`.
+- `ADMIN_EMAIL` / `ADMIN_SENHA_INICIAL`: e-mail e senha do admin criado na
+  primeira execução (só roda com a tabela `users` vazia). A senha é
+  obrigatória (mínimo 10 caracteres) quando `NODE_ENV=production`.
 - `TRUST_PROXY`: `true` se a aplicação roda atrás de um proxy reverso.
 - `PORT`: porta HTTP (padrão `3000`).
 

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Sistema de RH para cadastro de funcionários, controle de faltas/atestados e cálculo de PL (participação nos lucros).",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",

@@ -1,0 +1,40 @@
+# Blueprint de deploy para o Render (https://render.com).
+# Uso: no painel do Render, "New +" -> "Blueprint", aponte para este
+# repositório no GitHub. O Render lê este arquivo e cria o serviço web e o
+# banco PostgreSQL automaticamente, já conectados entre si.
+#
+# Depois do primeiro deploy, defina ADMIN_EMAIL e ADMIN_SENHA_INICIAL nas
+# variáveis de ambiente do serviço (aba "Environment") ANTES do primeiro
+# boot para que o admin inicial seja criado com essas credenciais — elas
+# nunca devem ficar neste arquivo nem em nenhum arquivo versionado no git.
+
+databases:
+  - name: sistema-rh-db
+    databaseName: sistema_rh
+    user: sistema_rh
+    plan: free
+
+services:
+  - type: web
+    name: sistema-rh
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_SSL
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sistema-rh-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_SENHA_INICIAL
+        sync: false
