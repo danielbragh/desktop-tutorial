@@ -1,6 +1,7 @@
 const express = require('express');
 const argon2 = require('argon2');
 const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
 const { db } = require('../db');
 const auditLog = require('../utils/auditLog');
 const { requireLogin } = require('../middleware/auth');
@@ -17,6 +18,14 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Muitas tentativas de login a partir deste endereço. Tente novamente mais tarde.',
+});
+
+const cadastroLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Muitas tentativas de cadastro a partir deste endereço. Tente novamente mais tarde.',
 });
 
 router.get('/login', (req, res) => {
@@ -78,6 +87,57 @@ router.post('/login', loginLimiter, async (req, res) => {
     auditLog.registrar(req, { acao: 'login_sucesso', entidade: 'users', entidadeId: usuario.id });
     res.redirect('/');
   });
+});
+
+router.get('/cadastro', (req, res) => {
+  if (req.session.usuario) return res.redirect('/');
+  res.render('auth/cadastro', { erro: null, sucesso: null });
+});
+
+const validarCadastro = [
+  body('nome').trim().notEmpty().withMessage('Nome é obrigatório.'),
+  body('email').trim().isEmail().withMessage('E-mail inválido.').normalizeEmail(),
+  body('senha').custom((valor) => senhaForte(valor)).withMessage(MENSAGEM_REGRA),
+  body('confirmar_senha')
+    .custom((valor, { req }) => valor === req.body.senha)
+    .withMessage('A confirmação não corresponde à senha.'),
+];
+
+router.post('/cadastro', cadastroLimiter, validarCadastro, async (req, res) => {
+  if (req.session.usuario) return res.redirect('/');
+
+  const erros = validationResult(req);
+  if (!erros.isEmpty()) {
+    return res.status(400).render('auth/cadastro', { erro: erros.array()[0].msg, sucesso: null });
+  }
+
+  const { nome, email, senha } = req.body;
+
+  try {
+    const hash = await argon2.hash(senha, { type: argon2.argon2id });
+    // Papel e status são sempre fixados no servidor: uma conta criada por
+    // autocadastro nunca nasce administradora, e só entra em vigor depois
+    // que um administrador a aprovar em "Usuários".
+    const criado = await db.get(
+      `INSERT INTO users (nome, email, senha_hash, papel, ativo) VALUES ($1, $2, $3, 'rh', FALSE) RETURNING id`,
+      [nome, email, hash]
+    );
+    await auditLog.registrar(req, {
+      acao: 'usuario_autocadastrado_pendente',
+      entidade: 'users',
+      entidadeId: criado.id,
+    });
+    res.render('auth/cadastro', {
+      erro: null,
+      sucesso:
+        'Cadastro enviado. Um administrador precisa aprovar sua conta antes que você possa entrar.',
+    });
+  } catch (e) {
+    res.status(400).render('auth/cadastro', {
+      erro: 'Não foi possível concluir o cadastro (e-mail já cadastrado?).',
+      sucesso: null,
+    });
+  }
 });
 
 router.post('/logout', requireLogin, (req, res) => {
