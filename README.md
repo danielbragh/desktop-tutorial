@@ -4,6 +4,9 @@ Aplicação web para apoiar a rotina do setor de RH: cadastro de funcionários e
 obras, lançamento de faltas/atestados, cálculo da PL (Participação nos
 Lucros) e um dashboard com indicadores.
 
+> Este repositório também contém o app **Inspeção de Cobertura**, independente
+> do Sistema de RH: veja [`inspecao-predial/`](inspecao-predial/README.md).
+
 ## Funcionalidades
 
 - **Cadastro de funcionários**: nome, CPF (com validação), matrícula/ID,
