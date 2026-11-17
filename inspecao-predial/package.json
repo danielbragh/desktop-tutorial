@@ -10,6 +10,7 @@
     "vendor": "node scripts/copiar-vendor.js"
   },
   "devDependencies": {
+    "aws4fetch": "^1.0.20",
     "jszip": "^3.10.1",
     "pdfmake": "^0.2.20"
   }

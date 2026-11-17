@@ -1172,3 +1172,219 @@ dialog::backdrop {
     }
   }
 }
+
+/* ---------- sincronização ---------- */
+
+.sinc {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  max-width: 44vw;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sobre-primaria) 12%, transparent);
+  color: var(--sobre-primaria);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sinc-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 600px) {
+  .sinc-compacto {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sinc-compacto .sinc-ponto {
+    width: 10px;
+    height: 10px;
+  }
+
+  .sinc-compacto .sinc-texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.sinc-ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9aa3ad;
+}
+
+.sinc-ok .sinc-ponto {
+  background: #5fcf86;
+}
+
+.sinc-sincronizando .sinc-ponto {
+  background: #86b4ff;
+}
+
+.sinc-offline .sinc-ponto,
+.sinc-parado .sinc-ponto {
+  background: #e8c34a;
+}
+
+.sinc-erro .sinc-ponto,
+.sinc-sem-login .sinc-ponto,
+.sinc-nao-aprovado .sinc-ponto {
+  background: #ff7a6e;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sinc-sincronizando .sinc-ponto {
+    animation: pulsar 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulsar {
+    to {
+      opacity: 0.3;
+    }
+  }
+}
+
+.selo-envio {
+  background: var(--pendente);
+  border-color: var(--pendente-borda);
+  color: var(--tinta);
+}
+
+/* ---------- login e equipe ---------- */
+
+.pagina-conta {
+  max-width: 440px;
+  padding-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.conta-marca {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.conta-marca img {
+  border-radius: 12px;
+}
+
+.conta-marca h1 {
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.conta-marca p {
+  color: var(--tinta-3);
+  font-size: 0.9rem;
+}
+
+.conta {
+  gap: 16px;
+}
+
+.conta h2 {
+  font-size: 1.15rem;
+}
+
+.conta p {
+  color: var(--tinta-2);
+  font-size: 0.94rem;
+}
+
+.conta-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.conta-form .botao {
+  width: 100%;
+}
+
+.abas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--superficie-2);
+}
+
+.abas button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--tinta-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.abas button[aria-selected='true'] {
+  background: var(--superficie);
+  color: var(--tinta);
+  box-shadow: var(--sombra);
+}
+
+.conta-erro,
+.conta-msg {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.conta .conta-erro {
+  background: var(--critico);
+  color: var(--critico-tx);
+}
+
+.conta .conta-msg {
+  background: var(--minimo);
+  color: var(--minimo-tx);
+}
+
+.menu-conta {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-conta .botao {
+  justify-content: flex-start;
+}
+
+.membros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.membro {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.membro .acoes:empty {
+  display: none;
+}

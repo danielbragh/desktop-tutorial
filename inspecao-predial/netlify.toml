@@ -1,0 +1,36 @@
+# Site estático em site/, função das fotos em netlify/functions/.
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# O login e a API de dados do Neon passam pelo mesmo endereço do app. Assim o
+# cookie de sessão é do próprio site (o Safari bloqueia cookies de terceiros)
+# e o navegador não precisa de CORS.
+[[redirects]]
+  from = "/neondb/auth/*"
+  to = "https://ep-crimson-bar-bbrxpsx8.neonauth.c-15.us-east-1.aws.neon.tech/neondb/auth/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/neondb/rest/v1/*"
+  to = "https://ep-crimson-bar-bbrxpsx8.apirest.c-15.us-east-1.aws.neon.tech/neondb/rest/v1/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "camera=(self), geolocation=(), microphone=()"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

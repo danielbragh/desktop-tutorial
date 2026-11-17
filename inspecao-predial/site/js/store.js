@@ -1,6 +1,7 @@
-// Armazenamento local (IndexedDB). Os relatórios e as fotos ficam só neste
-// aparelho; se o navegador bloquear o IndexedDB, o app continua funcionando
-// em memória até a página ser fechada.
+// Armazenamento local (IndexedDB). É a cópia de trabalho do aparelho: o app
+// lê e grava aqui, inclusive sem internet, e a sincronização (sync.js) leva
+// as mudanças para o banco. Se o navegador bloquear o IndexedDB, o app
+// continua funcionando em memória até a página ser fechada.
 
 const NOME = 'inspecao-predial';
 const VERSAO = 1;
@@ -79,6 +80,34 @@ export function salvarRelatorio(rel) {
   return operar('relatorios', 'readwrite', (s, m) => (s ? pedir(s.put(rel)) : void m.set(rel.id, copia(rel))));
 }
 
+// Lê e grava um registro na mesma transação, para a sincronização não
+// sobrescrever uma edição feita entre a leitura e a gravação. `fn` recebe o
+// registro atual (ou undefined) e devolve o novo, null para apagar ou
+// undefined para não mudar nada.
+function atualizar(loja, id, fn) {
+  return operar(loja, 'readwrite', (s, m) => {
+    if (!s) {
+      const novo = fn(m.has(id) ? copia(m.get(id)) : undefined);
+      if (novo === null) m.delete(id);
+      else if (novo !== undefined) m.set(id, copia(novo));
+      return novo;
+    }
+    return new Promise((ok, erro) => {
+      const req = s.get(id);
+      req.onerror = () => erro(req.error);
+      req.onsuccess = () => {
+        const novo = fn(req.result);
+        if (novo === null) s.delete(id);
+        else if (novo !== undefined) s.put(novo);
+        ok(novo);
+      };
+    });
+  });
+}
+
+export const atualizarRelatorio = (id, fn) => atualizar('relatorios', id, fn);
+export const atualizarFoto = (id, fn) => atualizar('fotos', id, fn);
+
 export async function excluirRelatorio(id) {
   const fotos = await obterFotos(id);
   await operar('fotos', 'readwrite', (s, m) => {
@@ -98,6 +127,16 @@ export function obterFotos(relatorioId) {
   );
 }
 
+export function obterFoto(id) {
+  return operar('fotos', 'readonly', (s, m) => (s ? pedir(s.get(id)) : m.get(id)));
+}
+
+// Fotos tiradas neste aparelho que ainda não foram para o servidor.
+export async function fotosNaoEnviadas() {
+  const todas = await operar('fotos', 'readonly', (s, m) => (s ? pedir(s.getAll()) : [...m.values()]));
+  return todas.filter((f) => f.enviada === false);
+}
+
 export function excluirFoto(id) {
   return operar('fotos', 'readwrite', (s, m) => (s ? pedir(s.delete(id)) : void m.delete(id)));
 }
@@ -108,4 +147,11 @@ export function obterConfig(chave) {
 
 export function salvarConfig(chave, valor) {
   return operar('config', 'readwrite', (s, m) => (s ? pedir(s.put(valor, chave)) : void m.set(chave, copia(valor))));
+}
+
+// Apaga tudo deste aparelho (ao sair da conta).
+export async function apagarTudo() {
+  for (const loja of ['relatorios', 'fotos', 'config']) {
+    await operar(loja, 'readwrite', (s, m) => (s ? pedir(s.clear()) : void m.clear()));
+  }
 }

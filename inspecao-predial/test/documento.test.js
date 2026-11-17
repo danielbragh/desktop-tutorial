@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { novoRelatorio, relatorioExemplo, sugerirItem, CHECKLIST } from '../js/modelo.js';
+import { novoRelatorio, relatorioExemplo, sugerirItem, CHECKLIST } from '../site/js/modelo.js';
 import {
   montarDocumento,
   pendencias,
@@ -14,7 +14,7 @@ import {
   formatarData,
   nomeArquivo,
   idAnomalia,
-} from '../js/documento.js';
+} from '../site/js/documento.js';
 
 const textoDe = (doc) =>
   doc.blocos

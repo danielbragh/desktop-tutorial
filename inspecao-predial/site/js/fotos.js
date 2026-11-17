@@ -125,3 +125,11 @@ export function liberarUrl(id) {
     urls.delete(id);
   }
 }
+
+// Largura e altura de uma imagem guardada (para fotos baixadas do servidor).
+export async function medirImagem(dados, tipo = 'image/jpeg') {
+  const img = await decodificar(new Blob([dados], { type: tipo }));
+  const medida = { w: img.naturalWidth || img.width, h: img.naturalHeight || img.height };
+  img.close?.();
+  return medida;
+}

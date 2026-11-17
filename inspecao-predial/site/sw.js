@@ -1,6 +1,6 @@
 // Deixa o app disponível sem internet. Troque VERSAO ao publicar mudanças
 // para os aparelhos baixarem os arquivos novos.
-const VERSAO = 'inspecao-v1';
+const VERSAO = 'inspecao-v2';
 
 const ARQUIVOS = [
   './',
@@ -15,6 +15,8 @@ const ARQUIVOS = [
   'js/previa.js',
   'js/store.js',
   'js/fotos.js',
+  'js/nuvem.js',
+  'js/sync.js',
   'vendor/jszip.min.js',
   'vendor/pdfmake.min.js',
   'vendor/fonts/LiberationSans-Regular.ttf',
@@ -48,7 +50,10 @@ self.addEventListener('activate', (e) => {
 // Responde do cache e atualiza em segundo plano quando há rede.
 self.addEventListener('fetch', (e) => {
   const { request } = e;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Login, banco e fotos sempre vão à rede.
+  if (url.pathname.startsWith('/neondb/') || url.pathname.startsWith('/api/')) return;
   e.respondWith(
     caches.open(VERSAO).then(async (cache) => {
       const guardado = await cache.match(request, { ignoreSearch: true });

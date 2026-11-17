@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { relatorioExemplo, novoRelatorio } from '../js/modelo.js';
-import { montarDocumento, resumoSugerido } from '../js/documento.js';
-import { gerarDocx, escaparXml, encaixar } from '../js/docx.js';
-import { definicaoPdf, registrarFontes, FONTES_PDF } from '../js/pdf.js';
+import { relatorioExemplo, novoRelatorio } from '../site/js/modelo.js';
+import { montarDocumento, resumoSugerido } from '../site/js/documento.js';
+import { gerarDocx, escaparXml, encaixar } from '../site/js/docx.js';
+import { definicaoPdf, registrarFontes, FONTES_PDF } from '../site/js/pdf.js';
 
 const require = createRequire(import.meta.url);
 const JSZip = require('jszip');
-const raiz = new URL('../', import.meta.url);
+const raiz = new URL('../site/', import.meta.url);
 const ler = (caminho) => readFileSync(new URL(caminho, raiz));
 
 // JPEG mínimo válido (1×1), suficiente para os geradores.
