@@ -1,6 +1,6 @@
 // Deixa o app disponível sem internet. Troque VERSAO ao publicar mudanças
 // para os aparelhos baixarem os arquivos novos.
-const VERSAO = 'inspecao-v2';
+const VERSAO = 'inspecao-v3';
 
 const ARQUIVOS = [
   './',
@@ -19,12 +19,18 @@ const ARQUIVOS = [
   'js/sync.js',
   'vendor/jszip.min.js',
   'vendor/pdfmake.min.js',
+  'fonts/ibm-plex-sans-latin-400-normal.woff2',
+  'fonts/ibm-plex-sans-latin-500-normal.woff2',
+  'fonts/ibm-plex-sans-latin-600-normal.woff2',
+  'fonts/ibm-plex-mono-latin-400-normal.woff2',
+  'fonts/ibm-plex-mono-latin-500-normal.woff2',
   'vendor/fonts/LiberationSans-Regular.ttf',
   'vendor/fonts/LiberationSans-Bold.ttf',
   'vendor/fonts/LiberationSans-Italic.ttf',
   'assets/modelo-base.docx',
   'assets/logo.png',
   'assets/icone.svg',
+  'assets/marca.svg',
   'assets/icone-192.png',
   'assets/icone-512.png',
 ];

@@ -98,6 +98,20 @@ endereço em *Neon > Auth > Trusted domains*, senão o login recusa o acesso.
 Ao publicar uma versão nova, troque `VERSAO` em `site/sw.js` para os aparelhos
 baixarem os arquivos atualizados.
 
+## Interface
+
+Padrão de software de gestão de campo (referências: Procore, Autodesk Build,
+SafetyCulture e o sistema de design IBM Carbon):
+
+- barra lateral escura com a navegação no computador; barra superior no celular;
+- relatórios em tabela, com busca e filtros (no celular, a tabela vira lista);
+- relatório aberto em modo de foco, com as seções numeradas ao lado e o
+  progresso do preenchimento (no celular, um seletor de seção);
+- tipografia IBM Plex (Sans na interface, Mono em números, datas e IDs),
+  hospedada no próprio site; cores dos graus e o amarelo de "campo a
+  preencher" vindos do modelo do relatório;
+- tema claro e escuro, conforme o aparelho.
+
 ## Como o documento é gerado
 
 `js/documento.js` transforma os dados do relatório em uma lista de blocos
@@ -133,7 +147,8 @@ site/js/fotos.js             redução e conversão de imagens
 site/js/app.js               interface
 site/sw.js                   funcionamento offline
 site/assets/                 modelo base, logo e ícones
-site/vendor/                 JSZip, pdfmake e fontes Liberation Sans
+site/vendor/                 JSZip, pdfmake e fontes Liberation Sans (PDF)
+site/fonts/                  IBM Plex Sans e Mono (interface)
 netlify/functions/fotos.mjs  função das fotos (Netlify)
 netlify/lib/                 lógica da função, assinatura S3, endereços do Neon
 banco/esquema.sql            tabelas, regras de acesso e funções do banco
@@ -158,7 +173,8 @@ memória (`test/neon-falso.mjs`), sem acessar a internet.
 
 - [JSZip](https://stuk.github.io/jszip/) 3.10.1 (MIT)
 - [pdfmake](https://pdfmake.github.io/docs/) 0.2.20 (MIT)
-- [Liberation Sans](https://github.com/liberationfonts) 2.1.5 (SIL OFL 1.1, ver `vendor/fonts/LICENSE-OFL.txt`)
+- [Liberation Sans](https://github.com/liberationfonts) 2.1.5 (SIL OFL 1.1, ver `site/vendor/fonts/LICENSE-OFL.txt`)
+- [IBM Plex](https://github.com/IBM/plex) Sans e Mono, pacotes @fontsource 5.3.0 (SIL OFL 1.1, ver `site/fonts/LICENSE-OFL.txt`)
 
 `npm run vendor` copia as bibliotecas de `node_modules` para `site/vendor/` depois
 de uma atualização de versão.

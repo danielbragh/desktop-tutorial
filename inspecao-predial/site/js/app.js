@@ -77,6 +77,8 @@ const estado = {
   secao: 'ident',
   abertas: new Set(), // anomalias expandidas
   incluirAnexo: false,
+  busca: '',
+  filtro: 'todos', // todos | andamento | completos
   alvoFoto: null, // anomalia que vai receber as próximas fotos
   ocupado: false,
   conta: null, // { id, email, nome } de quem entrou
@@ -261,16 +263,18 @@ function textoSinc() {
   }
 }
 
-// No editor o indicador é compacto: em tela estreita vira só o ponto colorido.
-function htmlSinc(compacto = estado.tela === 'editor') {
+// Indicador de sincronização. Aparece na barra lateral, na barra superior do
+// celular e no editor; todos são atualizados juntos.
+function htmlSinc(variante = 'lateral') {
   const e = estado.sinc;
   const texto = textoSinc();
-  return `<button type="button" class="sinc sinc-${h(e.situacao)}${compacto ? ' sinc-compacto' : ''}" id="sinc" data-acao="sincronizar" title="${h(e.mensagem || `${texto}. Toque para sincronizar agora.`)}"><span class="sinc-ponto" aria-hidden="true"></span><span class="sinc-texto">${h(texto)}</span></button>`;
+  return `<button type="button" class="sinc sinc-${h(e.situacao)} sinc-${variante}" data-sinc="${variante}" data-acao="sincronizar" title="${h(e.mensagem || `${texto}. Toque para sincronizar agora.`)}"><span class="sinc-ponto" aria-hidden="true"></span><span class="sinc-texto">${h(texto)}</span></button>`;
 }
 
 function mostrarSinc() {
-  const el = $('#sinc');
-  if (el) el.outerHTML = htmlSinc();
+  document.querySelectorAll('[data-sinc]').forEach((el) => {
+    el.outerHTML = htmlSinc(el.dataset.sinc);
+  });
 }
 
 // Outro aparelho mudou relatórios: atualiza a tela sem perder o que está sendo digitado.
@@ -290,8 +294,7 @@ async function aoMudarRemoto(ids) {
   if (novo.atualizadoEm === estado.rel.atualizadoEm) return;
   estado.rel = novo;
   estado.fotos = new Map((await store.obterFotos(novo.id)).map((f) => [f.id, f]));
-  const titulo = $('#titulo-rel');
-  if (titulo) titulo.textContent = tituloRel(novo);
+  atualizarTitulo(novo);
   const situacao = $('#situacao');
   if (situacao) situacao.textContent = textoSituacao();
   desenharSecao();
@@ -655,6 +658,72 @@ function podeCompartilhar() {
 
 // ---------- telas ----------
 
+// Ícones de traço (24×24), desenhados para este app.
+const ICONE = {
+  relatorios: '<path d="M7 3.5h7l4.5 4.5v12.5H7z"/><path d="M14 3.5V8h4.5M10 12.5h5.5M10 16h5.5"/>',
+  equipe: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.6-3.3 2.8-5.2 5.5-5.2s4.9 1.9 5.5 5.2"/><path d="M15.3 5.6a3 3 0 0 1 0 5.8M17.4 14.6c1.6.7 2.6 2.2 3 4.9"/>',
+  perfil: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.7 3.6-5.6 7-5.6s6.2 1.9 7 5.6"/>',
+  exportar: '<path d="M12 4v10.5M7.5 10 12 14.5 16.5 10M5 19.5h14"/>',
+  importar: '<path d="M12 14.5V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/>',
+  sair: '<path d="M14 4.5h4.5v15H14M10 8l-4 4 4 4M6.5 12H16"/>',
+  mais: '<path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/>',
+  voltar: '<path d="M14.5 5.5 8 12l6.5 6.5"/>',
+  busca: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
+  novo: '<path d="M12 5v14M5 12h14"/>',
+  ok: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+};
+const icone = (nome, cls = '') =>
+  `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONE[nome]}</svg>`;
+
+function iniciais(nome, email) {
+  const base = (nome || email || '?').trim();
+  const partes = base.split(/[\s@.]+/).filter(Boolean);
+  return ((partes[0]?.[0] || '?') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
+
+const marcaHtml = (clara = false) =>
+  `<div class="marca${clara ? ' marca-clara' : ''}"><img src="assets/marca.svg" alt="" width="28" height="28"><span><strong>Inspeção de Cobertura</strong><small>Relatórios técnicos</small></span></div>`;
+
+// Estrutura comum das telas principais: barra lateral (computador) ou barra superior (celular).
+function casca(conteudo, ativo = 'relatorios') {
+  const admin = estado.membro?.papel === 'admin';
+  const item = (acao, nome, rotulo) =>
+    `<button type="button" class="nav-item" data-acao="${acao}"${ativo === nome ? ' aria-current="page"' : ''}>${icone(nome)}<span>${rotulo}</span></button>`;
+  const c = estado.conta || {};
+  return `<div class="casca">
+    <aside class="lateral" aria-label="Navegação principal">
+      ${marcaHtml(true)}
+      <nav class="nav">
+        ${item('lista', 'relatorios', 'Relatórios')}
+        ${admin ? item('equipe', 'equipe', 'Equipe') : ''}
+        ${item('perfil', 'perfil', 'Meus dados')}
+      </nav>
+      <div class="nav nav-secundaria">
+        <p class="nav-titulo">Cópia de segurança</p>
+        ${item('exportar', 'exportar', 'Exportar')}
+        ${item('importar', 'importar', 'Importar')}
+      </div>
+      <div class="lateral-pe">
+        ${htmlSinc('lateral')}
+        <div class="usuario">
+          <span class="avatar" aria-hidden="true">${h(iniciais(c.nome, c.email))}</span>
+          <span class="usuario-txt"><strong>${h(c.nome || 'Sem nome')}</strong><small>${h(c.email || '')}</small></span>
+          <button type="button" class="botao-icone botao-icone-claro" data-acao="sair" aria-label="Sair deste aparelho" title="Sair deste aparelho">${icone('sair')}</button>
+        </div>
+      </div>
+    </aside>
+    <div class="principal">
+      <header class="topo-movel">
+        ${marcaHtml(true)}
+        ${htmlSinc('topo')}
+        <button type="button" class="botao-icone botao-icone-claro" data-acao="menu-conta" aria-label="Menu da conta">${icone('menu')}</button>
+      </header>
+      <main class="conteudo">${conteudo}</main>
+    </div>
+  </div>`;
+}
+
 function contarPorSecao() {
   const c = {};
   for (const p of pendencias(estado.rel)) c[p.secao] = (c[p.secao] || 0) + 1;
@@ -664,10 +733,29 @@ function contarPorSecao() {
 function htmlNavegacao() {
   const c = contarPorSecao();
   const total = Object.values(c).reduce((a, b) => a + b, 0);
+  const etapas = SECOES.filter((s) => s.id !== 'emitir');
+  const completas = etapas.filter((s) => !c[s.id]).length;
+  const pct = Math.round((completas / etapas.length) * 100);
+  const progresso = `<div class="progresso">
+      <div class="progresso-txt"><span>Preenchimento</span><span class="mono">${completas}/${etapas.length} seções</span></div>
+      <div class="progresso-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Seções completas"><span style="width:${pct}%"></span></div>
+    </div>`;
+  const lista = SECOES.map((s) => {
+    const n = s.id === 'emitir' ? total : c[s.id] || 0;
+    const marca = s.id === 'emitir' ? icone('exportar') : n ? `<span class="mono">${s.num}</span>` : icone('ok');
+    return `<button type="button" class="etapa${!n && s.id !== 'emitir' ? ' etapa-ok' : ''}${s.id === 'emitir' ? ' etapa-emitir' : ''}" data-acao="ir" data-secao="${s.id}"${s.id === estado.secao ? ' aria-current="step"' : ''}>
+      <span class="etapa-marca">${marca}</span><span class="etapa-nome">${h(s.nome)}</span>${n ? `<span class="etapa-falta" title="${n} campo(s) a preencher">${n}</span>` : ''}</button>`;
+  }).join('');
+  return progresso + `<nav class="etapas-lista">${lista}</nav>`;
+}
+
+function htmlSeletorSecao() {
+  const c = contarPorSecao();
+  const total = Object.values(c).reduce((a, b) => a + b, 0);
   return SECOES.map((s) => {
     const n = s.id === 'emitir' ? total : c[s.id] || 0;
-    return `<button type="button" data-acao="ir" data-secao="${s.id}"${s.id === estado.secao ? ' aria-current="true"' : ''}>
-      ${s.num ? `<span class="num">${s.num}</span>` : ''}<span>${h(s.nome)}</span>${n ? `<span class="falta" title="${n} campo(s) a preencher">${n}</span>` : ''}</button>`;
+    const rotulo = `${s.num ? s.num + '. ' : ''}${s.nome}${n ? ` · ${n} pendente${n === 1 ? '' : 's'}` : ''}`;
+    return `<option value="${s.id}"${s.id === estado.secao ? ' selected' : ''}>${h(rotulo)}</option>`;
   }).join('');
 }
 
@@ -678,84 +766,175 @@ function desenharSecao({ rolar = false } = {}) {
   $('#secao').innerHTML =
     telas[estado.secao]() +
     `<div class="passos">
-      ${ant ? `<button type="button" class="botao" data-acao="ir" data-secao="${ant.id}">Voltar: ${h(ant.nome)}</button>` : '<span></span>'}
-      ${prox ? `<button type="button" class="botao destaque" data-acao="ir" data-secao="${prox.id}">${prox.id === 'emitir' ? 'Emitir' : 'Avançar: ' + h(prox.nome)}</button>` : ''}
+      ${ant ? `<button type="button" class="botao" data-acao="ir" data-secao="${ant.id}">${icone('voltar')}<span>${h(ant.nome)}</span></button>` : '<span></span>'}
+      ${prox ? `<button type="button" class="botao destaque" data-acao="ir" data-secao="${prox.id}"><span>${prox.id === 'emitir' ? 'Revisar e emitir' : 'Próxima: ' + h(prox.nome)}</span></button>` : ''}
     </div>`;
   atualizarNavegacao();
-  if (rolar) {
-    window.scrollTo({ top: 0 });
-    $('.secoes [aria-current="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
-  }
+  if (rolar) window.scrollTo({ top: 0 });
 }
 
 function atualizarNavegacao() {
-  const nav = $('.secoes');
+  const nav = $('.etapas');
   if (nav) nav.innerHTML = htmlNavegacao();
+  const sel = $('#seletor-secao');
+  if (sel) sel.innerHTML = htmlSeletorSecao();
+}
+
+function atualizarTitulo(rel) {
+  const t = $('#titulo-rel');
+  if (t) t.textContent = rel.ident.cliente || 'Cliente não informado';
+  const n = $('#numero-rel');
+  if (n) n.textContent = rel.numero || 'Sem número';
 }
 
 function desenharEditor() {
   const rel = estado.rel;
-  app.innerHTML = `
-    <header class="barra"><div class="barra-dentro">
-      <button type="button" class="botao pequeno" data-acao="voltar-lista" aria-label="Voltar para a lista de relatórios">Relatórios</button>
-      <div class="barra-titulo"><strong id="titulo-rel">${h(tituloRel(rel))}</strong><span id="situacao">${h(textoSituacao())}</span></div>
-      ${rel.exemplo ? '' : htmlSinc()}
-      <button type="button" class="botao pequeno destaque" data-acao="ir" data-secao="emitir">Emitir</button>
-    </div></header>
-    <main class="pagina"><div class="editor">
-      <nav class="secoes" aria-label="Seções do relatório"></nav>
+  app.innerHTML = `<div class="editor-casca">
+    <header class="editor-topo">
+      <button type="button" class="botao-icone" data-acao="voltar-lista" aria-label="Voltar para Relatórios">${icone('voltar')}</button>
+      <div class="editor-titulo">
+        <div class="trilha"><button type="button" data-acao="voltar-lista">Relatórios</button><span aria-hidden="true">/</span><span class="mono" id="numero-rel">${h(rel.numero || 'Sem número')}</span>${rel.exemplo ? '<span class="etiqueta">Exemplo</span>' : ''}</div>
+        <strong id="titulo-rel">${h(rel.ident.cliente || 'Cliente não informado')}</strong>
+      </div>
+      <span class="editor-salvo" id="situacao">${h(textoSituacao())}</span>
+      ${rel.exemplo ? '' : htmlSinc('editor')}
+      <button type="button" class="botao destaque editor-emitir" data-acao="ir" data-secao="emitir">Emitir</button>
+    </header>
+    <div class="editor-corpo">
+      <aside class="etapas" aria-label="Seções do relatório"></aside>
+      <div class="seletor-secao"><label for="seletor-secao" class="visualmente-oculto">Seção do relatório</label><select id="seletor-secao"></select></div>
       <section class="secao" id="secao"></section>
-    </div></main>`;
+    </div>
+  </div>`;
   desenharSecao({ rolar: true });
 }
 
 const tituloRel = (rel) => `${rel.numero || 'Sem número'} · ${rel.ident.cliente || 'Cliente não informado'}`;
 
-function desenharLista() {
-  const itens = estado.lista
+const semAcento = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+function situacaoRel(r) {
+  const p = pendencias(r).length;
+  return { pendencias: p, completo: p === 0 };
+}
+
+function relatoriosFiltrados() {
+  const termo = semAcento(estado.busca).trim();
+  return estado.lista.filter((r) => {
+    const { completo } = situacaoRel(r);
+    if (estado.filtro === 'andamento' && completo) return false;
+    if (estado.filtro === 'completos' && !completo) return false;
+    if (!termo) return true;
+    return [r.numero, r.ident.cliente, r.ident.endereco, r.ident.representante].some((v) => semAcento(v).includes(termo));
+  });
+}
+
+function htmlGraus(r) {
+  const c = contarGraus(r);
+  const itens = [
+    ['Crítico', 'g-critico'],
+    ['Médio', 'g-medio'],
+    ['Mínimo', 'g-minimo'],
+    ['Observação', 'g-observacao'],
+  ]
+    .filter(([g]) => c[g])
+    .map(([g, cls]) => `<span class="grau ${cls}" title="${c[g]} ${g.toLowerCase()}">${c[g]}<span class="visualmente-oculto"> ${g}</span></span>`)
+    .join('');
+  return itens ? `<span class="graus">${itens}</span>` : '<span class="mudo">Nenhuma</span>';
+}
+
+function htmlLinhas() {
+  const lista = relatoriosFiltrados();
+  if (!lista.length) {
+    const msg = estado.lista.length
+      ? 'Nenhum relatório corresponde à busca ou ao filtro.'
+      : 'Nenhum relatório ainda. Use "Novo relatório" para começar uma inspeção.';
+    return `<tr class="linha-vazia"><td colspan="7">${msg}</td></tr>`;
+  }
+  return lista
     .map((r) => {
-      const c = contarGraus(r);
-      const p = pendencias(r).length;
-      return `<li class="relatorio">
-        <button type="button" class="relatorio-abrir" data-acao="abrir" data-id="${h(r.id)}">
-          <span class="relatorio-linha"><span class="codigo">${h(r.numero || 'Sem número')}</span><span>${h(formatarData(r.ident.dataInspecao) || 'sem data')}</span>${r.exemplo ? '<span class="selo">Exemplo, só neste aparelho</span>' : ''}${r.pendente && !r.exemplo ? '<span class="selo selo-envio">A enviar</span>' : ''}</span>
-          <span class="relatorio-cliente">${h(r.ident.cliente || 'Cliente não informado')}</span>
-          <span class="relatorio-linha">
-            ${c['Crítico'] ? `<span class="selo g-critico">${c['Crítico']} crítico${c['Crítico'] === 1 ? '' : 's'}</span>` : ''}
-            ${c['Médio'] ? `<span class="selo g-medio">${c['Médio']} médio${c['Médio'] === 1 ? '' : 's'}</span>` : ''}
-            ${c['Mínimo'] ? `<span class="selo g-minimo">${c['Mínimo']} mínimo${c['Mínimo'] === 1 ? '' : 's'}</span>` : ''}
-            ${r.anomalias.length ? '' : '<span>Sem anomalias</span>'}
-            <span>${r.fotos.length} foto${r.fotos.length === 1 ? '' : 's'}</span>
-            ${p ? `<span class="falta">${p} a preencher</span>` : '<span class="selo g-minimo">Completo</span>'}
-          </span>
-        </button>
-        <div class="relatorio-pe">
-          <button type="button" class="botao pequeno discreto" data-acao="duplicar" data-id="${h(r.id)}">Nova inspeção deste imóvel</button>
-          <button type="button" class="botao pequeno discreto perigo" data-acao="excluir-relatorio" data-id="${h(r.id)}">Excluir</button>
-        </div>
-      </li>`;
+      const { pendencias: p, completo } = situacaoRel(r);
+      const situacao = completo
+        ? '<span class="status status-ok">Completo</span>'
+        : `<span class="status status-falta">${p} pendência${p === 1 ? '' : 's'}</span>`;
+      const marcas = [
+        r.exemplo ? '<span class="etiqueta" title="O exemplo fica só neste aparelho">Exemplo</span>' : '',
+        r.pendente && !r.exemplo ? '<span class="etiqueta etiqueta-envio">A enviar</span>' : '',
+      ].join('');
+      return `<tr data-acao="abrir" data-id="${h(r.id)}">
+        <td class="c-num"><span class="mono">${h(r.numero || '—')}</span></td>
+        <td class="c-cliente"><button type="button" class="link-linha" data-acao="abrir" data-id="${h(r.id)}">${h(r.ident.cliente || 'Cliente não informado')}</button><span class="mudo c-endereco">${h(r.ident.endereco || 'Endereço não informado')}</span></td>
+        <td class="c-data"><span class="mono">${h(formatarData(r.ident.dataInspecao) || '—')}</span></td>
+        <td class="c-anom">${htmlGraus(r)}</td>
+        <td class="c-fotos"><span class="mono">${r.fotos.length}</span></td>
+        <td class="c-situacao">${situacao}${marcas}</td>
+        <td class="c-acoes">
+          <details class="menu-linha">
+            <summary data-acao="nada" aria-label="Ações do relatório ${h(r.numero || '')}">${icone('mais')}</summary>
+            <div class="menu-pop" role="menu">
+              <button type="button" role="menuitem" data-acao="abrir" data-id="${h(r.id)}">Abrir</button>
+              <button type="button" role="menuitem" data-acao="duplicar" data-id="${h(r.id)}">Nova inspeção deste imóvel</button>
+              <button type="button" role="menuitem" class="perigo" data-acao="excluir-relatorio" data-id="${h(r.id)}">Excluir</button>
+            </div>
+          </details>
+        </td>
+      </tr>`;
     })
     .join('');
-  app.innerHTML = `
-    <header class="barra"><div class="barra-dentro">
-      <div class="barra-titulo"><strong>Inspeção de Cobertura</strong><span>${h(estado.conta?.email || 'Relatórios de inspeção visual com drone')}</span></div>
-      ${htmlSinc()}
-      <button type="button" class="botao pequeno" data-acao="menu-conta" aria-haspopup="dialog">Conta</button>
-    </div></header>
-    <main class="pagina">
-      ${store.persistente() ? '' : '<div class="aviso-topo">Este navegador não deixou guardar dados no aparelho. Os relatórios ficam só até fechar a página: exporte uma cópia antes de sair.</div>'}
-      <div class="inicio-topo">
-        <div><h1>Relatórios</h1><p>${estado.lista.length ? `${estado.lista.length} relatório${estado.lista.length === 1 ? '' : 's'} da equipe` : 'Nenhum relatório ainda'}</p></div>
-        <div class="acoes">
-          <button type="button" class="botao destaque" data-acao="novo">Novo relatório</button>
-          <button type="button" class="botao" data-acao="exportar">Exportar cópia</button>
-          <button type="button" class="botao" data-acao="importar">Importar cópia</button>
-        </div>
+}
+
+function htmlFiltros() {
+  const n = { todos: estado.lista.length, andamento: 0, completos: 0 };
+  for (const r of estado.lista) n[situacaoRel(r).completo ? 'completos' : 'andamento'] += 1;
+  return [
+    ['todos', 'Todos'],
+    ['andamento', 'Em preenchimento'],
+    ['completos', 'Completos'],
+  ]
+    .map(
+      ([id, rotulo]) =>
+        `<button type="button" class="segmento" data-acao="filtrar" data-filtro="${id}" aria-pressed="${estado.filtro === id}">${rotulo}<span class="mono">${n[id]}</span></button>`
+    )
+    .join('');
+}
+
+function desenharLista() {
+  const total = estado.lista.length;
+  const aEnviar = estado.lista.filter((r) => r.pendente && !r.exemplo).length;
+  const avisos = [
+    store.persistente() ? '' : '<div class="aviso-faixa">Este navegador não deixou guardar dados no aparelho. Os relatórios ficam só até fechar a página.</div>',
+    estado.sessaoExpirada
+      ? '<div class="aviso-faixa">Sua sessão expirou. As alterações continuam guardadas neste aparelho. <button type="button" class="botao pequeno" data-acao="entrar-de-novo">Entrar de novo</button></div>'
+      : '',
+  ].join('');
+  app.innerHTML = casca(`
+    <div class="pagina-topo">
+      <div>
+        <h1>Relatórios</h1>
+        <p class="sub">${total ? `${total} relatório${total === 1 ? '' : 's'} da equipe` : 'Nenhum relatório ainda'}${aEnviar ? ` · ${aEnviar} a enviar` : ''}</p>
       </div>
-      ${itens ? `<ul class="relatorios">${itens}</ul>` : '<div class="vazio">Toque em "Novo relatório" para começar uma inspeção.</div>'}
-      ${estado.sessaoExpirada ? '<div class="aviso-topo">Sua sessão expirou. As alterações continuam guardadas neste aparelho. <button type="button" class="botao pequeno" data-acao="entrar-de-novo">Entrar de novo</button></div>' : ''}
-      <p class="nota">Os relatórios ficam no banco de dados da equipe e também neste aparelho, para funcionar sem internet. Sem conexão, as alterações esperam aqui e são enviadas quando a internet voltar.</p>
-    </main>`;
+      <button type="button" class="botao destaque" data-acao="novo">${icone('novo')}<span>Novo relatório</span></button>
+    </div>
+    ${avisos}
+    <div class="ferramentas">
+      <label class="busca">${icone('busca')}<span class="visualmente-oculto">Buscar relatórios</span>
+        <input id="busca" type="search" placeholder="Buscar por número, cliente ou endereço" value="${h(estado.busca)}" autocomplete="off"></label>
+      <div class="segmentos" role="group" aria-label="Filtrar relatórios" id="filtros">${htmlFiltros()}</div>
+    </div>
+    <div class="tabela-caixa">
+      <table class="tabela">
+        <thead><tr>
+          <th scope="col" class="c-num">Nº</th><th scope="col" class="c-cliente">Cliente e endereço</th><th scope="col" class="c-data">Inspeção</th>
+          <th scope="col" class="c-anom">Anomalias</th><th scope="col" class="c-fotos">Fotos</th><th scope="col" class="c-situacao">Situação</th><th scope="col" class="c-acoes"><span class="visualmente-oculto">Ações</span></th>
+        </tr></thead>
+        <tbody id="lista-corpo">${htmlLinhas()}</tbody>
+      </table>
+    </div>
+    <p class="nota">Os relatórios ficam no banco de dados da equipe e também neste aparelho, para funcionar sem internet. Sem conexão, as alterações esperam aqui e são enviadas quando a internet voltar.</p>`);
 }
 
 async function irParaLista({ historico = true } = {}) {
@@ -1113,6 +1292,16 @@ const acoes = {
   },
   perfil: () => abrirPerfil(),
   'menu-conta': () => abrirMenuConta(),
+  lista() {
+    if (estado.tela === 'lista') return;
+    return irParaLista();
+  },
+  filtrar(el) {
+    estado.filtro = el.dataset.filtro;
+    $('#filtros').innerHTML = htmlFiltros();
+    $('#lista-corpo').innerHTML = htmlLinhas();
+  },
+  nada() {},
   equipe: () => abrirEquipe(),
   membro: (el) => alterarMembro(el),
   sair: () => sair(),
@@ -1247,6 +1436,9 @@ const acoes = {
 };
 
 document.addEventListener('click', (e) => {
+  for (const menu of document.querySelectorAll('details.menu-linha[open]')) {
+    if (!menu.contains(e.target) || e.target.closest('.menu-pop button')) menu.open = false;
+  }
   const el = e.target.closest('[data-acao]');
   if (!el || el.disabled) return;
   Promise.resolve(acoes[el.dataset.acao]?.(el)).catch((erro) => mostrarErro(erro, 'Algo deu errado'));
@@ -1266,6 +1458,17 @@ document.addEventListener(
 
 function aoEditar(e) {
   const el = e.target;
+  if (el.id === 'busca') {
+    estado.busca = el.value;
+    $('#lista-corpo').innerHTML = htmlLinhas();
+    return;
+  }
+  if (el.id === 'seletor-secao') {
+    if (e.type !== 'change') return;
+    estado.secao = el.value;
+    desenharSecao({ rolar: true });
+    return;
+  }
   if (el.id === 'opcao-anexo') {
     estado.incluirAnexo = el.checked;
     desenharSecao();
@@ -1305,7 +1508,7 @@ function aoEditar(e) {
     if (resumo) resumo.textContent = [a.local, a.elemento].filter(Boolean).join(' · ') || 'Nova anomalia';
   }
   if (caminho === 'equip.distanciaDetalhe') $('#resolucao').innerHTML = htmlResolucao();
-  if (caminho === 'numero' || caminho === 'ident.cliente') $('#titulo-rel').textContent = tituloRel(estado.rel);
+  if (caminho === 'numero' || caminho === 'ident.cliente') atualizarTitulo(estado.rel);
   if (/^checklist\./.test(caminho)) el.closest('.linha')?.classList.remove('sem-situacao');
   if (el.hasAttribute('data-estrutura')) {
     if (e.type === 'change') desenharSecao();
@@ -1387,16 +1590,13 @@ function desenharLogin() {
       <button class="botao destaque" type="submit">Entrar</button>
       <button type="button" class="botao discreto" data-acao="modo-conta" data-modo="esqueci">Esqueci a senha</button>`;
   }
-  app.innerHTML = `
-    <main class="pagina pagina-conta">
-      <div class="conta-marca"><img src="assets/icone.svg" alt="" width="56" height="56"><div><h1>Inspeção de Cobertura</h1><p>Relatórios de inspeção visual com drone</p></div></div>
-      <section class="cartao conta">
-        ${t.modo === 'entrar' || t.modo === 'cadastrar' ? `<div class="abas" role="tablist">${abas}</div>` : '<h2>Recuperar senha</h2>'}
-        ${t.erro ? `<p class="conta-erro" role="alert">${h(t.erro)}</p>` : ''}
-        ${t.mensagem ? `<p class="conta-msg" role="status">${h(t.mensagem)}</p>` : ''}
-        <form id="form-conta" class="conta-form" novalidate>${corpo}</form>
-      </section>
-    </main>`;
+  const titulo = { entrar: 'Acesse sua conta', cadastrar: 'Acesse sua conta', esqueci: 'Recuperar senha', codigo: 'Definir nova senha' }[t.modo];
+  app.innerHTML = telaAcesso(`
+      <h2>${titulo}</h2>
+      ${t.modo === 'entrar' || t.modo === 'cadastrar' ? `<div class="abas" role="tablist" aria-label="Acesso">${abas}</div>` : ''}
+      ${t.erro ? `<p class="conta-erro" role="alert">${h(t.erro)}</p>` : ''}
+      ${t.mensagem ? `<p class="conta-msg" role="status">${h(t.mensagem)}</p>` : ''}
+      <form id="form-conta" class="conta-form" novalidate>${corpo}</form>`);
   $('#form-conta input')?.focus();
 }
 
@@ -1484,17 +1684,50 @@ async function carregarPerfil() {
 
 function desenharAguardando() {
   estado.tela = 'aguardando';
-  app.innerHTML = `
-    <main class="pagina pagina-conta">
-      <section class="cartao conta">
+  app.innerHTML = telaAcesso(`
         <h2>Aguardando aprovação</h2>
         <p>Sua conta <strong>${h(estado.conta?.email)}</strong> foi criada. Um administrador da equipe precisa liberar o acesso no app, em <em>Conta &gt; Equipe</em>.</p>
         <div class="acoes">
           <button type="button" class="botao destaque" data-acao="verificar-aprovacao">Verificar de novo</button>
           <button type="button" class="botao" data-acao="sair">Sair</button>
-        </div>
-      </section>
-    </main>`;
+        </div>`);
+}
+
+// Planta de cobertura em quatro águas com a rota do drone e anomalias marcadas.
+const DESENHO_COBERTURA = `<svg class="acesso-desenho" viewBox="0 0 420 270" aria-hidden="true" focusable="false">
+  <g class="d-grade">${Array.from({ length: 13 }, (_, i) => `<path d="M${15 + i * 32.5} 5v260"/>`).join('')}${Array.from({ length: 9 }, (_, i) => `<path d="M5 ${12 + i * 31}h410"/>`).join('')}</g>
+  <g class="d-telhado">
+    <rect x="50" y="45" width="320" height="180"/>
+    <path d="M50 45 140 135M370 45 280 135M50 225 140 135M370 225 280 135M140 135h140"/>
+    <rect x="300" y="160" width="40" height="34"/>
+  </g>
+  <path class="d-rota" d="M30 30h360v40H30v40h360v40H30v40h360v40H30"/>
+  <g class="d-ponto"><circle cx="100" cy="70" r="9"/><text x="114" y="66">A01</text></g>
+  <g class="d-ponto"><circle cx="250" cy="200" r="9"/><text x="264" y="196">A02</text></g>
+  <g class="d-ponto d-critico"><circle cx="330" cy="110" r="9"/><text x="344" y="106">A03</text></g>
+  <text class="d-cota" x="50" y="252">32,0 × 18,0 m</text>
+</svg>`;
+
+function telaAcesso(conteudo) {
+  return `<div class="acesso">
+    <section class="acesso-marca">
+      ${marcaHtml(true)}
+      <div class="acesso-texto">
+        <p class="sobretitulo">Inspeção visual com drone</p>
+        <h1>Registre em campo.<br>Emita no escritório.</h1>
+        <ul class="acesso-lista">
+          <li>Funciona sem internet na cobertura</li>
+          <li>Anomalias, fotos e checklist numerados automaticamente</li>
+          <li>DOCX e PDF no padrão do seu modelo de relatório</li>
+        </ul>
+      </div>
+      ${DESENHO_COBERTURA}
+    </section>
+    <main class="acesso-form">
+      <div class="acesso-topo-movel">${marcaHtml()}</div>
+      <section class="conta">${conteudo}</section>
+    </main>
+  </div>`;
 }
 
 async function abrirMenuConta() {
@@ -1678,8 +1911,8 @@ async function iniciar() {
     }
   } catch (e) {
     console.error(e);
-    app.innerHTML = `<main class="pagina pagina-conta"><section class="cartao conta"><h2>Não foi possível abrir o app</h2><p>${h(e?.message || e)}</p>
-      <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button></section></main>`;
+    app.innerHTML = telaAcesso(`<h2>Não foi possível abrir o app</h2><p>${h(e?.message || e)}</p>
+      <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button>`);
   }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
