@@ -395,7 +395,9 @@ textarea {
 
 .marca img {
   flex: none;
-  border-radius: 5px;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
 }
 
 .marca span {

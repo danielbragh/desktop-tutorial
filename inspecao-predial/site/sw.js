@@ -1,6 +1,6 @@
 // Deixa o app disponível sem internet. Troque VERSAO ao publicar mudanças
 // para os aparelhos baixarem os arquivos novos.
-const VERSAO = 'inspecao-v3';
+const VERSAO = 'inspecao-v4';
 
 const ARQUIVOS = [
   './',
@@ -29,8 +29,8 @@ const ARQUIVOS = [
   'vendor/fonts/LiberationSans-Italic.ttf',
   'assets/modelo-base.docx',
   'assets/logo.png',
-  'assets/icone.svg',
-  'assets/marca.svg',
+  'assets/favicon.png',
+  'assets/marca-db.png',
   'assets/icone-192.png',
   'assets/icone-512.png',
 ];

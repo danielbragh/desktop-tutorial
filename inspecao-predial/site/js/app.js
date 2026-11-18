@@ -683,7 +683,7 @@ function iniciais(nome, email) {
 }
 
 const marcaHtml = (clara = false) =>
-  `<div class="marca${clara ? ' marca-clara' : ''}"><img src="assets/marca.svg" alt="" width="28" height="28"><span><strong>Inspeção de Cobertura</strong><small>Relatórios técnicos</small></span></div>`;
+  `<div class="marca${clara ? ' marca-clara' : ''}"><img src="assets/marca-db.png" alt="DB" width="36" height="36"><span><strong>Inspeção de Cobertura</strong><small>Relatórios técnicos</small></span></div>`;
 
 // Estrutura comum das telas principais: barra lateral (computador) ou barra superior (celular).
 function casca(conteudo, ativo = 'relatorios') {
