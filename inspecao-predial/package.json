@@ -1,0 +1,17 @@
+{
+  "name": "inspecao-predial",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "App (PWA) de inspeção visual de cobertura com drone: preenche o relatório em campo e emite DOCX ou PDF.",
+  "scripts": {
+    "start": "node servidor.js",
+    "test": "node --test test/*.test.js",
+    "vendor": "node scripts/copiar-vendor.js"
+  },
+  "devDependencies": {
+    "aws4fetch": "^1.0.20",
+    "jszip": "^3.10.1",
+    "pdfmake": "^0.2.20"
+  }
+}

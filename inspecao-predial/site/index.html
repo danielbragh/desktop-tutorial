@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inspeção de Cobertura</title>
+<meta name="description" content="Preencha a inspeção de cobertura com drone em campo e emita o relatório em DOCX ou PDF.">
+<meta name="theme-color" content="#1b2430">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/icone-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app"><p class="carregando">Carregando…</p></div>
+<dialog id="dialogo"></dialog>
+<div id="avisos" aria-live="polite"></div>
+<input type="file" id="seletor-fotos" accept="image/*" multiple hidden>
+<input type="file" id="seletor-camera" accept="image/*" capture="environment" hidden>
+<input type="file" id="seletor-logo" accept="image/*" hidden>
+<input type="file" id="seletor-copia" accept="application/json,.json" hidden>
+<noscript><p class="carregando">Este app precisa de JavaScript ativado.</p></noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

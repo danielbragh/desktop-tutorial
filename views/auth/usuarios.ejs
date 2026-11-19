@@ -39,6 +39,12 @@
 
   <div class="card">
     <h2>Usuários cadastrados</h2>
+    <% var pendentes = usuarios.filter(function(u) { return !u.ativo; }); %>
+    <% if (pendentes.length) { %>
+      <div class="alerta alerta-info">
+        <%= pendentes.length %> conta(s) aguardando aprovação de acesso.
+      </div>
+    <% } %>
     <table>
       <thead>
         <tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th><th></th></tr>
@@ -50,12 +56,12 @@
             <td><%= u.email %></td>
             <td><%= u.papel === 'admin' ? 'Administrador' : 'RH' %></td>
             <td>
-              <% if (u.ativo) { %><span class="tag tag-verde">Ativo</span><% } else { %><span class="tag tag-vermelha">Inativo</span><% } %>
+              <% if (u.ativo) { %><span class="tag tag-verde">Ativo</span><% } else { %><span class="tag tag-vermelha">Pendente aprovação</span><% } %>
             </td>
             <td>
               <form method="post" action="/usuarios/<%= u.id %>/alternar-ativo">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-                <button type="submit" class="btn btn-secundario"><%= u.ativo ? 'Desativar' : 'Ativar' %></button>
+                <button type="submit" class="btn <%= u.ativo ? 'btn-secundario' : '' %>"><%= u.ativo ? 'Desativar' : 'Aprovar' %></button>
               </form>
             </td>
           </tr>

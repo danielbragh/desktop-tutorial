@@ -70,15 +70,17 @@ async function migrate() {
 async function seedAdmin() {
   const { rows } = await pool.query('SELECT COUNT(*)::int AS total FROM users');
   if (rows[0].total === 0) {
+    const email = process.env.ADMIN_EMAIL || 'admin@empresa.com';
+    const nome = process.env.ADMIN_NOME || 'Administrador';
     const senha = process.env.ADMIN_SENHA_INICIAL || 'MudeEssaSenha#2026';
     const hash = await argon2.hash(senha, { type: argon2.argon2id });
     await pool.query(
       'INSERT INTO users (nome, email, senha_hash, papel) VALUES ($1, $2, $3, $4)',
-      ['Administrador', 'admin@empresa.com', hash, 'admin']
+      [nome, email, hash, 'admin']
     );
     console.log('----------------------------------------------------');
     console.log('Usuário admin inicial criado:');
-    console.log('  E-mail: admin@empresa.com');
+    console.log(`  E-mail: ${email}`);
     console.log(`  Senha:  ${senha}`);
     console.log('  Troque essa senha assim que possível.');
     console.log('----------------------------------------------------');
