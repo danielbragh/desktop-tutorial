@@ -127,11 +127,13 @@ export const PERFIL_PADRAO = {
   titulo: 'Técnico em Edificações',
   registro: 'CFT/CRT-02',
   cidade: 'Fortaleza/CE',
-  aeronave: 'DJI Mavic Pro — câmera de 12 MP, sensor 1/2,3", estabilização em 3 eixos',
+  // Dados da certidão de cadastro da ANAC (SISANT), emitida em 19/11/2026.
+  aeronave:
+    'DJI Mavic Pro (modelo M1P), nº de série 08QUE8A10100B2, PMD 0,720 kg — câmera de 12 MP, sensor 1/2,3", estabilização em 3 eixos',
   fatorResolucao: 0.33, // mm/pixel a cada metro de distância
   tipoImagens:
     'Vertical (nadir) para visão geral; oblíquas para calhas, rufos e platibandas; vídeo de reconhecimento',
-  sisant: '',
+  sisant: 'PP-417653154 (uso não recreativo, válido até 19/11/2028)',
   reta: '',
   logo: null, // data URL PNG; null = logo do modelo
   logoProporcao: null, // largura / altura do logo personalizado
