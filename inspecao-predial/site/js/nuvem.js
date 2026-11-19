@@ -42,15 +42,40 @@ function decodificarJwt(jwt) {
   }
 }
 
-export function criarNuvem({ buscar = (...a) => fetch(...a), agora = () => Date.now() } = {}) {
+// Respostas de "servidor ocupado ou iniciando": valem uma nova tentativa.
+// O banco do plano gratuito desliga após alguns minutos parado e, ao religar,
+// a API de dados responde 503 por alguns segundos enquanto carrega o esquema.
+const STATUS_PASSAGEIRO = new Set([502, 503, 504]);
+const ESPERAS_MS = [400, 800, 1500, 2500, 4000, 6000]; // ~15 s no total
+const LIMITE_MS = 20000; // tempo máximo de uma requisição
+
+export function criarNuvem({ buscar = (...a) => fetch(...a), agora = () => Date.now(), esperar = (ms) => new Promise((ok) => setTimeout(ok, ms)), aoEsperar = () => {} } = {}) {
   let jwt = null;
   let jwtExpira = 0;
 
-  async function requisitar(url, init) {
+  async function umaVez(url, init) {
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const relogio = ctrl ? setTimeout(() => ctrl.abort(), LIMITE_MS) : null;
     try {
-      return await buscar(url, init);
-    } catch {
+      return await buscar(url, ctrl ? { ...init, signal: ctrl.signal } : init);
+    } catch (e) {
+      if (e?.name === 'AbortError') return null; // demorou demais: conta como passageiro
       throw new ErroNuvem('Sem conexão com o servidor.', { offline: true });
+    } finally {
+      if (relogio) clearTimeout(relogio);
+    }
+  }
+
+  async function requisitar(url, init) {
+    for (let tentativa = 0; ; tentativa += 1) {
+      const r = await umaVez(url, init);
+      if (r && !STATUS_PASSAGEIRO.has(r.status)) return r;
+      if (tentativa >= ESPERAS_MS.length) {
+        if (r) return r;
+        throw new ErroNuvem('O servidor demorou demais para responder.', { status: 504 });
+      }
+      aoEsperar(tentativa + 1);
+      await esperar(ESPERAS_MS[tentativa]);
     }
   }
 

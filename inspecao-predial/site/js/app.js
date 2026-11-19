@@ -86,7 +86,13 @@ const estado = {
   sinc: { situacao: 'parado', pendentes: 0, mensagem: '' },
 };
 
-const nuvem = criarNuvem();
+const nuvem = criarNuvem({
+  // Na abertura, sem dados guardados, avisa que o servidor está iniciando.
+  aoEsperar: (n) => {
+    const el = $('.carregando');
+    if (el && n >= 2) el.textContent = 'Conectando ao servidor… o banco de dados está iniciando.';
+  },
+});
 const sinc = criarSincronizador({
   store,
   nuvem,
@@ -1902,31 +1908,88 @@ async function iniciar() {
     estado.perfil = comPadrao(await store.obterConfig('perfil'));
     estado.conta = (await store.obterConfig('conta')) || null;
     estado.membro = (await store.obterConfig('membro')) || null;
-    let sessao;
-    try {
-      sessao = await nuvem.sessao();
-    } catch (e) {
-      if (!e?.offline) throw e;
-      sessao = undefined; // sem internet: decide pelo que está guardado
-    }
-    if (sessao === undefined) {
-      if (estado.conta && estado.membro?.aprovado) await abrirApp();
-      else {
-        telaConta.erro = 'Sem conexão. Para entrar pela primeira vez neste aparelho é preciso internet.';
-        desenharLogin();
-      }
-    } else if (!sessao) {
-      telaConta.email = estado.conta?.email || '';
-      desenharLogin();
-    } else {
-      await aposEntrar();
-    }
   } catch (e) {
     console.error(e);
     app.innerHTML = telaAcesso(`<h2>Não foi possível abrir o app</h2><p>${h(e?.message || e)}</p>
       <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button>`);
+    iniciarAtualizacaoAutomatica();
+    return;
   }
+
   iniciarAtualizacaoAutomatica();
+  if (estado.conta && estado.membro?.aprovado) {
+    // Já entrou neste aparelho: abre na hora com os dados guardados e confere
+    // a sessão em segundo plano (funciona igual sem internet).
+    try {
+      await abrirApp();
+    } catch (e) {
+      console.error(e);
+      app.innerHTML = telaAcesso(`<h2>Não foi possível abrir o app</h2><p>${h(e?.message || e)}</p>
+        <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button>`);
+      return;
+    }
+    conferirSessao();
+  } else {
+    await entrarSemDadosGuardados();
+  }
+}
+
+// Primeira abertura no aparelho (ou conta ainda sem aprovação): precisa do servidor.
+async function entrarSemDadosGuardados() {
+  try {
+    const sessao = await nuvem.sessao();
+    if (!sessao) {
+      telaConta.email = estado.conta?.email || '';
+      desenharLogin();
+      return;
+    }
+    await aposEntrar();
+  } catch (e) {
+    console.warn('Abertura:', e);
+    telaConta.email = estado.conta?.email || '';
+    telaConta.erro = e?.offline
+      ? 'Sem conexão. Para entrar pela primeira vez neste aparelho é preciso internet.'
+      : 'O servidor não respondeu agora. Aguarde alguns segundos e entre de novo.';
+    desenharLogin();
+  }
+}
+
+// Confere, sem travar a tela, se a sessão ainda vale e se a conta continua aprovada.
+async function conferirSessao() {
+  let sessao;
+  try {
+    sessao = await nuvem.sessao();
+  } catch (e) {
+    if (!e?.offline) console.warn('Sessão:', e);
+    return; // sem internet ou servidor indisponível: segue com os dados do aparelho
+  }
+  if (!sessao) {
+    estado.sessaoExpirada = true;
+    if (estado.tela === 'lista') desenharLista();
+    return;
+  }
+  if (sessao.user.id !== estado.conta?.id) {
+    // Outra conta neste navegador: refaz a entrada completa.
+    try {
+      await aposEntrar();
+    } catch (e) {
+      console.warn('Entrada:', e);
+    }
+    return;
+  }
+  try {
+    const membro = await nuvem.membro();
+    estado.membro = { papel: membro.papel, aprovado: membro.aprovado };
+    await store.salvarConfig('membro', estado.membro);
+    if (!membro.aprovado) {
+      desenharAguardando();
+      return;
+    }
+    if (estado.tela === 'lista') desenharLista(); // ex.: virou administrador
+    await carregarPerfil();
+  } catch (e) {
+    if (!e?.offline) console.warn('Equipe:', e);
+  }
 }
 
 // ---------- atualização automática ----------
@@ -2019,6 +2082,7 @@ function iniciarAtualizacaoAutomatica() {
   navigator.serviceWorker
     .register('sw.js')
     .then((registro) => {
+      if (!registro) return; // navegador sem suporte ou com o recurso bloqueado
       const verificar = () => registro.update().catch(() => {});
       setInterval(() => {
         if (document.visibilityState === 'visible') verificar();

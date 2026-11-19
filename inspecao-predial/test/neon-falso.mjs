@@ -169,7 +169,15 @@ export function criarNeonFalso({ minutosToken = 15 } = {}) {
     }
   }
 
+  // Simula o banco religando: as próximas `frio.chamadas` respostas da API de
+  // dados são 503 "carregando o esquema", como o PostgREST faz.
+  const frio = { chamadas: 0 };
+
   async function dados(req, caminho) {
+    if (frio.chamadas > 0) {
+      frio.chamadas -= 1;
+      return json({ code: 'PGRST002', message: 'Could not query the database for the schema cache. Retrying.' }, 503);
+    }
     const claims = lerJwt(/^Bearer (.+)$/.exec(req.headers.get('authorization') || '')?.[1]);
     if (!claims) return json({ code: 'PGRST301', message: 'JWT invalid' }, 401);
     const m = /^rpc\/([a-z_]+)$/.exec(caminho);
@@ -212,5 +220,5 @@ export function criarNeonFalso({ minutosToken = 15 } = {}) {
     buscar: buscarInterno,
   });
 
-  return { neon, fotos, usuarios, membros, relatorios, perfis, objetos, chamadas, jwt, codigos };
+  return { neon, fotos, usuarios, membros, relatorios, perfis, objetos, chamadas, jwt, codigos, frio };
 }
