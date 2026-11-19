@@ -141,6 +141,16 @@ function mostrarErro(e, contexto) {
   avisar(`${contexto}: ${e?.message || e}`, true);
 }
 
+// Toque fora da janela (na área escurecida) fecha, como "Cancelar". O clique
+// no fundo chega ao próprio <dialog>; dentro dele chega ao conteúdo.
+$('#dialogo').addEventListener('click', (e) => {
+  const d = e.currentTarget;
+  if (e.target !== d || !d.open) return;
+  const r = d.getBoundingClientRect();
+  const dentro = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  if (!dentro) d.close('nao');
+});
+
 // Fecha o diálogo aberto e espera o evento "close", para o próximo diálogo
 // não receber o fechamento do anterior.
 function fecharDialogo() {
@@ -1827,15 +1837,18 @@ function confirmarNoDialogo(titulo, texto) {
   d.innerHTML = `<div class="dialogo-corpo"><h2>${h(titulo)}</h2><p>${h(texto)}</p>
     <div class="dialogo-pe"><button type="button" class="botao" data-resposta="nao">Cancelar</button><button type="button" class="botao destaque perigo" data-resposta="sim">Confirmar</button></div></div>`;
   return new Promise((ok) => {
-    d.addEventListener(
-      'click',
-      function ouvir(e) {
-        const b = e.target.closest('[data-resposta]');
-        if (!b) return d.addEventListener('click', ouvir, { once: true });
-        ok(b.dataset.resposta === 'sim');
-      },
-      { once: true }
-    );
+    const responder = (sim) => {
+      d.removeEventListener('click', clique);
+      d.removeEventListener('close', fechou);
+      ok(sim);
+    };
+    const clique = (e) => {
+      const b = e.target.closest('[data-resposta]');
+      if (b) responder(b.dataset.resposta === 'sim');
+    };
+    const fechou = () => responder(false); // toque fora ou Esc
+    d.addEventListener('click', clique);
+    d.addEventListener('close', fechou);
   });
 }
 
