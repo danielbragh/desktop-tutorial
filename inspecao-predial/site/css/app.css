@@ -453,8 +453,37 @@ textarea {
   color: var(--sobre-marca);
 }
 
-.topo-movel .marca {
+/* A logo do celular abre o menu da conta (Meus dados, equipe, sair). */
+.marca-botao {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: -4px 0 -4px -6px;
+  padding: 4px 8px 4px 6px;
+  border: 0;
+  border-radius: var(--raio-painel);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.marca-botao .marca {
+  min-width: 0;
+}
+
+.marca-botao:hover,
+.marca-botao:active {
+  background: var(--marca-2);
+}
+
+.marca-seta {
+  width: 18px;
+  height: 18px;
+  color: var(--sobre-marca-2);
 }
 
 .conteudo {

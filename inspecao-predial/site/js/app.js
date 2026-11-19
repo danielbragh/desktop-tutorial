@@ -677,7 +677,7 @@ const ICONE = {
   busca: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
   novo: '<path d="M12 5v14M5 12h14"/>',
   ok: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
-  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  abaixo: '<path d="m7 10 5 5 5-5"/>',
 };
 const icone = (nome, cls = '') =>
   `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONE[nome]}</svg>`;
@@ -721,9 +721,10 @@ function casca(conteudo, ativo = 'relatorios') {
     </aside>
     <div class="principal">
       <header class="topo-movel">
-        ${marcaHtml(true)}
+        <button type="button" class="marca-botao" data-acao="menu-conta" aria-haspopup="dialog" aria-label="Abrir menu: Meus dados, equipe, cópia de segurança e sair">
+          ${marcaHtml(true)}${icone('abaixo', 'marca-seta')}
+        </button>
         ${htmlSinc('topo')}
-        <button type="button" class="botao-icone botao-icone-claro" data-acao="menu-conta" aria-label="Menu da conta">${icone('menu')}</button>
       </header>
       <main class="conteudo">${conteudo}</main>
     </div>
