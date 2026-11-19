@@ -1,6 +1,6 @@
 // Deixa o app disponível sem internet. Troque VERSAO ao publicar mudanças
 // para os aparelhos baixarem os arquivos novos.
-const VERSAO = 'inspecao-v4';
+const VERSAO = 'inspecao-v5';
 
 const ARQUIVOS = [
   './',
@@ -53,7 +53,41 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Responde do cache e atualiza em segundo plano quando há rede.
+// Código do app (HTML, JS, CSS): busca na internet primeiro, para uma versão
+// publicada valer já na próxima abertura; sem conexão (ou se a rede demorar
+// mais que ESPERA_MS), usa a cópia guardada.
+// Bibliotecas, fontes e imagens: usa a cópia guardada e atualiza em segundo plano.
+const ESPERA_MS = 4000;
+const PESADOS = /\/(vendor|fonts|assets)\//;
+
+function daRedeEGuarda(cache, request) {
+  return fetch(request).then((resposta) => {
+    if (resposta.ok) cache.put(request, resposta.clone());
+    return resposta;
+  });
+}
+
+async function redePrimeiro(cache, request) {
+  const rede = daRedeEGuarda(cache, request);
+  const tempo = new Promise((ok) => setTimeout(ok, ESPERA_MS));
+  try {
+    const resposta = await Promise.race([rede, tempo]);
+    if (resposta) return resposta;
+  } catch {
+    /* sem rede: cai para a cópia guardada */
+  }
+  const guardado =
+    (await cache.match(request, { ignoreSearch: true })) ||
+    (request.mode === 'navigate' ? await cache.match('index.html') : undefined);
+  return guardado || rede;
+}
+
+async function guardadoPrimeiro(cache, request) {
+  const guardado = await cache.match(request, { ignoreSearch: true });
+  const rede = daRedeEGuarda(cache, request).catch(() => guardado);
+  return guardado || rede;
+}
+
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   const url = new URL(request.url);
@@ -61,15 +95,6 @@ self.addEventListener('fetch', (e) => {
   // Login, banco e fotos sempre vão à rede.
   if (url.pathname.startsWith('/neondb/') || url.pathname.startsWith('/api/')) return;
   e.respondWith(
-    caches.open(VERSAO).then(async (cache) => {
-      const guardado = await cache.match(request, { ignoreSearch: true });
-      const daRede = fetch(request)
-        .then((resposta) => {
-          if (resposta.ok) cache.put(request, resposta.clone());
-          return resposta;
-        })
-        .catch(() => guardado);
-      return guardado || daRede;
-    })
+    caches.open(VERSAO).then((cache) => (PESADOS.test(url.pathname) ? guardadoPrimeiro(cache, request) : redePrimeiro(cache, request)))
   );
 });

@@ -939,6 +939,11 @@ function desenharLista() {
 
 async function irParaLista({ historico = true } = {}) {
   if (temporizador) await salvarAgora();
+  if (estado.recarregarNaLista) {
+    await gravando;
+    location.reload();
+    return;
+  }
   estado.rel = null;
   estado.fotos = new Map();
   estado.tela = 'lista';
@@ -1551,6 +1556,17 @@ $('#seletor-logo').addEventListener('change', async (e) => {
   }
 });
 
+// Junta o perfil salvo com o padrão; campo salvo vazio não apaga o padrão
+// (ex.: cadastro do drone atualizado depois que a pessoa salvou "Meus dados").
+function comPadrao(salvo) {
+  const p = { ...PERFIL_PADRAO };
+  for (const [k, v] of Object.entries(salvo || {})) {
+    if (v === '' && typeof PERFIL_PADRAO[k] === 'string' && PERFIL_PADRAO[k]) continue;
+    p[k] = v;
+  }
+  return p;
+}
+
 // ---------- conta e equipe ----------
 
 const telaConta = { modo: 'entrar', email: '', mensagem: '', erro: '' };
@@ -1668,11 +1684,11 @@ async function carregarPerfil() {
     if (await store.obterConfig('perfilPendente')) return;
     const remoto = await nuvem.meuPerfil();
     if (remoto && Object.keys(remoto).length) {
-      estado.perfil = { ...PERFIL_PADRAO, ...remoto };
+      estado.perfil = comPadrao(remoto);
       await store.salvarConfig('perfil', estado.perfil);
     } else {
       const local = await store.obterConfig('perfil');
-      estado.perfil = { ...PERFIL_PADRAO, ...(local || {}) };
+      estado.perfil = comPadrao(local);
       if (local) {
         await store.salvarConfig('perfilPendente', true);
       }
@@ -1887,7 +1903,7 @@ async function criarExemplo() {
 
 async function iniciar() {
   try {
-    estado.perfil = { ...PERFIL_PADRAO, ...((await store.obterConfig('perfil')) || {}) };
+    estado.perfil = comPadrao(await store.obterConfig('perfil'));
     estado.conta = (await store.obterConfig('conta')) || null;
     estado.membro = (await store.obterConfig('membro')) || null;
     let sessao;
@@ -1915,6 +1931,15 @@ async function iniciar() {
       <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button>`);
   }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) {
+    // Versão nova instalada com o app aberto: recarrega se não houver edição em curso.
+    const tinhaVersao = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!tinhaVersao) return;
+      if (estado.tela === 'editor') {
+        estado.recarregarNaLista = true;
+        avisar('Nova versão do app instalada. Ela entra quando você voltar à lista.');
+      } else location.reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }
