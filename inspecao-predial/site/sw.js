@@ -1,6 +1,7 @@
-// Deixa o app disponível sem internet. Troque VERSAO ao publicar mudanças
-// para os aparelhos baixarem os arquivos novos.
-const VERSAO = 'inspecao-v5';
+// Deixa o app disponível sem internet.
+// VERSAO é preenchida no deploy por scripts/versao.mjs (resumo dos arquivos
+// do site); o servidor local faz o mesmo. Não precisa editar à mão.
+const VERSAO = 'inspecao-dev';
 
 const ARQUIVOS = [
   './',

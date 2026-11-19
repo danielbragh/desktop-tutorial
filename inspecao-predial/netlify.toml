@@ -2,6 +2,9 @@
 [build]
   publish = "site"
   functions = "netlify/functions"
+  # Grava a versão (resumo dos arquivos) no sw.js: é o que faz os aparelhos
+  # perceberem a publicação nova e se atualizarem sozinhos.
+  command = "node scripts/versao.mjs"
 
 [functions]
   node_bundler = "esbuild"

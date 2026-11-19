@@ -95,8 +95,20 @@ Variáveis de ambiente do site: `NEON_S3_ACCESS_KEY_ID` e
 Se o endereço do site mudar (domínio próprio, por exemplo), inclua o novo
 endereço em *Neon > Auth > Trusted domains*, senão o login recusa o acesso.
 
-Ao publicar uma versão nova, troque `VERSAO` em `site/sw.js` para os aparelhos
-baixarem os arquivos atualizados.
+### Atualização automática
+
+O deploy roda `node scripts/versao.mjs`, que grava em `site/sw.js` um número de
+versão calculado do conteúdo de todos os arquivos do site. Com isso:
+
+- o app aberto verifica se há versão nova a cada 5 minutos, quando volta a
+  ficar visível e quando a internet volta;
+- ao encontrar, ele espera a pessoa parar de mexer por alguns segundos, salva,
+  recarrega e volta para a mesma tela, relatório, seção e posição;
+- com o app em segundo plano, a atualização acontece na hora;
+- o código do app vem sempre da internet quando há conexão; a cópia guardada
+  no aparelho só é usada sem conexão.
+
+Não é preciso editar `VERSAO` à mão.
 
 ## Interface
 

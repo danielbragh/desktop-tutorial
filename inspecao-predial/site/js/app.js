@@ -939,11 +939,6 @@ function desenharLista() {
 
 async function irParaLista({ historico = true } = {}) {
   if (temporizador) await salvarAgora();
-  if (estado.recarregarNaLista) {
-    await gravando;
-    location.reload();
-    return;
-  }
   estado.rel = null;
   estado.fotos = new Map();
   estado.tela = 'lista';
@@ -1878,6 +1873,7 @@ async function abrirApp() {
     /* sem histórico disponível */
   }
   await irParaLista({ historico: false });
+  await retomarAposAtualizacao();
   await sinc.atualizarContagem().catch(() => {});
   sinc.sincronizar();
 }
@@ -1930,18 +1926,110 @@ async function iniciar() {
     app.innerHTML = telaAcesso(`<h2>Não foi possível abrir o app</h2><p>${h(e?.message || e)}</p>
       <button type="button" class="botao destaque" data-acao="recarregar">Tentar de novo</button>`);
   }
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) {
-    // Versão nova instalada com o app aberto: recarrega se não houver edição em curso.
-    const tinhaVersao = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!tinhaVersao) return;
-      if (estado.tela === 'editor') {
-        estado.recarregarNaLista = true;
-        avisar('Nova versão do app instalada. Ela entra quando você voltar à lista.');
-      } else location.reload();
-    });
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  iniciarAtualizacaoAutomatica();
+}
+
+// ---------- atualização automática ----------
+//
+// A cada publicação o sw.js muda (scripts/versao.mjs). O app pergunta ao
+// navegador se há versão nova a cada 5 minutos, quando volta a ficar visível e
+// quando a internet volta. Quando a versão nova assume, o app espera a pessoa
+// parar de mexer, salva, recarrega e volta para a mesma tela e seção.
+
+const CHAVE_RETOMAR = 'inspecao-retomar';
+const PAUSA_MS = 6000; // tempo sem tocar na tela antes de recarregar
+let atualizacaoPendente = false;
+let ultimaInteracao = Date.now();
+
+for (const evento of ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart']) {
+  document.addEventListener(evento, () => (ultimaInteracao = Date.now()), { passive: true, capture: true });
+}
+
+function podeRecarregar() {
+  if (estado.ocupado || temporizador || $('#dialogo')?.open) return false;
+  if (document.visibilityState === 'hidden') return true; // app em segundo plano
+  if (Date.now() - ultimaInteracao < PAUSA_MS) return false;
+  // Formulário de login com algo digitado: espera terminar.
+  if (estado.tela === 'login' && [...document.querySelectorAll('#form-conta input')].some((i) => i.value)) return false;
+  return true;
+}
+
+async function aplicarAtualizacao() {
+  if (!atualizacaoPendente) return;
+  if (!podeRecarregar()) {
+    setTimeout(aplicarAtualizacao, 2000);
+    return;
   }
+  atualizacaoPendente = false;
+  try {
+    await salvarAgora();
+    await gravando;
+    sessionStorage.setItem(
+      CHAVE_RETOMAR,
+      JSON.stringify({
+        tela: estado.tela,
+        rel: estado.tela === 'editor' ? estado.rel?.id : null,
+        secao: estado.secao,
+        abertas: [...estado.abertas],
+        rolagem: window.scrollY,
+        busca: estado.busca,
+        filtro: estado.filtro,
+      })
+    );
+  } catch {
+    /* sem sessionStorage: recarrega mesmo assim, os dados já estão salvos */
+  }
+  location.reload();
+}
+
+// Depois de recarregar por atualização: volta para onde a pessoa estava.
+async function retomarAposAtualizacao() {
+  let r = null;
+  try {
+    r = JSON.parse(sessionStorage.getItem(CHAVE_RETOMAR) || 'null');
+    sessionStorage.removeItem(CHAVE_RETOMAR);
+  } catch {
+    return;
+  }
+  if (!r) return;
+  estado.busca = r.busca || '';
+  estado.filtro = r.filtro || 'todos';
+  if (r.tela === 'editor' && r.rel && (await store.obterRelatorio(r.rel))) {
+    await abrirRelatorio(r.rel, { secao: r.secao || 'ident' });
+    estado.abertas = new Set(r.abertas || []);
+    desenharSecao();
+  } else if (estado.tela === 'lista') {
+    desenharLista();
+  }
+  setTimeout(() => window.scrollTo({ top: r.rolagem || 0 }), 50);
+  avisar('App atualizado para a versão mais recente.');
+}
+
+function iniciarAtualizacaoAutomatica() {
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http') || window.claude) return;
+  let temVersao = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!temVersao) {
+      temVersao = true; // primeira instalação nesta aba: já está rodando a versão atual
+      return;
+    }
+    atualizacaoPendente = true;
+    aplicarAtualizacao();
+  });
+  navigator.serviceWorker
+    .register('sw.js')
+    .then((registro) => {
+      const verificar = () => registro.update().catch(() => {});
+      setInterval(() => {
+        if (document.visibilityState === 'visible') verificar();
+      }, 5 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') verificar();
+        else if (atualizacaoPendente) aplicarAtualizacao();
+      });
+      window.addEventListener('online', verificar);
+    })
+    .catch(() => {});
 }
 
 // Sincroniza quando a internet volta, quando o app volta a ficar visível e a cada 2 minutos.

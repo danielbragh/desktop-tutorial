@@ -13,6 +13,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NEON, configFotos } from './netlify/lib/config.mjs';
 import { criarRotaFotos } from './netlify/lib/fotos.mjs';
+import { calcularVersao, carimbarSw } from './scripts/versao.mjs';
 
 const RAIZ = fileURLToPath(new URL('./site/', import.meta.url));
 const TIPOS = {
@@ -89,7 +90,9 @@ export function criarServidor({ neon, fotos }) {
         res.writeHead(403).end('Proibido');
         return;
       }
-      const dados = await readFile(arquivo);
+      let dados = await readFile(arquivo);
+      // Igual ao deploy: sw.js leva a versão atual dos arquivos.
+      if (relativo === '/sw.js' || relativo === 'sw.js') dados = Buffer.from(carimbarSw(dados.toString('utf8'), calcularVersao(RAIZ)));
       res.writeHead(200, { ...CABECALHOS, 'Content-Type': TIPOS[extname(arquivo)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
       res.end(dados);
     } catch (e) {
